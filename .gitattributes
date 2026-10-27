@@ -1,0 +1,11 @@
+# 统一换行符
+# .sh 必须是 LF —— 否则在 Git Bash 里跑会报 $'\r': command not found
+* text=auto
+*.sh     text eol=lf
+*.cs     text eol=lf
+*.xaml   text eol=lf
+*.csproj text eol=lf
+*.md     text eol=lf
+.gitignore text eol=lf
+# 安装说明给 Windows 记事本看，用 CRLF
+*.txt    text eol=crlf

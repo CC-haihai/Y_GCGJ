@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>AutoLayer.TestKit</AssemblyName>
+    <RootNamespace>AutoLayer.TestKit</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <CodePage>65001</CodePage>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <OutputPath>..\bin\</OutputPath>
+    <CadInstallDir Condition="'$(CadInstallDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2021</CadInstallDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutoLayer.Core\AutoLayer.Core.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <Reference Include="acdbmgd">
+      <HintPath>$(CadInstallDir)\acdbmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="accoremgd">
+      <HintPath>$(CadInstallDir)\accoremgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

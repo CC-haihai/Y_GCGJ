@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage SchemaVersion="1.0"
+                    AutodeskProduct="AutoCAD"
+                    Name="自动归层"
+                    Description="按配置把新建图元自动归到指定图层"
+                    AppVersion="1.1.0"
+                    ProductCode="{8E3A51C4-2F6B-4C0E-9A21-6B7D4E1F0A31}"
+                    UpgradeCode="{C41F9D72-5A83-4B67-8E0C-1D9A3B5F7E42}"
+                    Author="AutoLayer">
+
+  <CompanyDetails Name="AutoLayer" Url="" Email="" />
+
+  <Components Description="自动归层 核心与配置面板">
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R23.1" SeriesMax="R24.3" />
+    <ComponentEntry AppName="自动归层"
+                    Version="1.1.0"
+                    ModuleName="./Contents/Windows/自动归层(QH)v1.1.dll"
+                    AppDescription="自动归层：绘图命令开始前切到配置的图层，命令结束后还原"
+                    LoadOnAutoCADStartup="True" />
+  </Components>
+
+</ApplicationPackage>

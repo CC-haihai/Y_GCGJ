@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AutoLayer.UI</AssemblyName>
+    <RootNamespace>AutoLayer.UI</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <CodePage>65001</CodePage>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <OutputPath>..\bin\</OutputPath>
+    <CadInstallDir Condition="'$(CadInstallDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2021</CadInstallDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AutoLayer.Core\AutoLayer.Core.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+    <Reference Include="acdbmgd">
+      <HintPath>$(CadInstallDir)\acdbmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="accoremgd">
+      <HintPath>$(CadInstallDir)\accoremgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>$(CadInstallDir)\acmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- CAD 原生颜色对话框（Autodesk.AutoCAD.Windows.ColorDialog）的返回值是 WinForms 的 DialogResult -->
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,486 @@
+﻿<Window x:Class="AutoLayer.UI.PanelWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Y_归层工具 V1.0"
+        Width="470"
+        SizeToContent="Height" MaxHeight="740" MinHeight="380"
+        MinWidth="430"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI, Microsoft YaHei UI"
+        FontSize="12"
+        Background="#141519"
+        Foreground="#F1F5F9"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        KeyDown="Window_KeyDown">
+
+  <!-- 配色与 UiTheme.cs 是同一套，改一处必须同步那边 -->
+  <Window.Resources>
+    <ResourceDictionary>
+
+    <!-- ============ 主按钮 ============ -->
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Padding" Value="16,0"/>
+      <Setter Property="Foreground" Value="#FFFFFF"/>
+      <Setter Property="Background" Value="#2563EB"/>
+      <Setter Property="BorderBrush" Value="#2563EB"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                    CornerRadius="3">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#3B82F6"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#60A5FA"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#1D4ED8"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#1D4ED8"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.32"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 次级按钮 ============ -->
+    <Style x:Key="GhostButton" TargetType="Button">
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Padding" Value="14,0"/>
+      <Setter Property="Foreground" Value="#C9D1DC"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                    CornerRadius="3">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#4DFFFFFF"/>
+                <Setter Property="Foreground" Value="#F1F5F9"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#0AFFFFFF"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.3"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 图标按钮 ============ -->
+    <Style x:Key="IconButton" TargetType="Button">
+      <Setter Property="Width" Value="28"/>
+      <Setter Property="Height" Value="28"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#98A0AC"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                    CornerRadius="3">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#1FFFFFFF"/>
+                <Setter Property="Foreground" Value="#F1F5F9"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#0AFFFFFF"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.28"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 图标按钮：危险 ============ -->
+    <Style x:Key="IconDangerButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                    CornerRadius="3">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#2A1A1C"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#4D3A3C"/>
+                <Setter Property="Foreground" Value="#F87171"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#201315"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter TargetName="Bd" Property="Opacity" Value="0.28"/>
+                <Setter Property="Cursor" Value="Arrow"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 开关 ============ -->
+    <Style x:Key="SwitchToggle" TargetType="ToggleButton">
+      <Setter Property="Width" Value="40"/>
+      <Setter Property="Height" Value="22"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ToggleButton">
+            <Grid>
+              <Border x:Name="Track" CornerRadius="11" Background="#3A3D45"
+                      BorderBrush="#1FFFFFFF" BorderThickness="1"/>
+              <Ellipse x:Name="Knob" Width="16" Height="16" Fill="#E8ECF2"
+                       HorizontalAlignment="Left" Margin="3,0,0,0"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Track" Property="Background" Value="#2563EB"/>
+                <Setter TargetName="Track" Property="BorderBrush" Value="#60A5FA"/>
+                <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
+                <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Knob" Property="Fill" Value="#FFFFFF"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 下拉项 ============ -->
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Padding" Value="9,6"/>
+      <Setter Property="Foreground" Value="#DDE3EC"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}"
+                    CornerRadius="3" Margin="3,1">
+              <ContentPresenter/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="#2563EB"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 下拉框 ============ -->
+    <Style TargetType="ComboBox">
+      <Setter Property="Height" Value="26"/>
+      <Setter Property="Foreground" Value="#F1F5F9"/>
+      <Setter Property="Background" Value="#26282F"/>
+      <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="9,0"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                      BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="3"/>
+
+              <Grid Margin="{TemplateBinding BorderThickness}">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="24"/>
+                </Grid.ColumnDefinitions>
+
+                <ContentPresenter x:Name="ContentSite" Grid.Column="0"
+                                  Content="{TemplateBinding SelectionBoxItem}"
+                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                  Margin="{TemplateBinding Padding}"
+                                  VerticalAlignment="Center"
+                                  IsHitTestVisible="False"/>
+
+                <TextBox x:Name="PART_EditableTextBox" Grid.Column="0"
+                         Visibility="Hidden"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="{TemplateBinding Foreground}"
+                         CaretBrush="#60A5FA"
+                         Padding="{TemplateBinding Padding}"
+                         VerticalContentAlignment="Center"
+                         IsReadOnly="{TemplateBinding IsReadOnly}"/>
+
+                <Path Grid.Column="1" Data="M0,0 L4,4 L8,0"
+                      Stroke="#98A0AC" StrokeThickness="1.4"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      IsHitTestVisible="False"/>
+
+                <ToggleButton x:Name="ToggleButton" Grid.Column="1"
+                              Focusable="False" ClickMode="Press"
+                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                  <ToggleButton.Template>
+                    <ControlTemplate TargetType="ToggleButton">
+                      <Border Background="Transparent"/>
+                    </ControlTemplate>
+                  </ToggleButton.Template>
+                </ToggleButton>
+              </Grid>
+
+              <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                     IsOpen="{TemplateBinding IsDropDownOpen}"
+                     Focusable="False" PopupAnimation="Fade">
+                <Border Background="#26282F" BorderBrush="#33FFFFFF" BorderThickness="1"
+                        CornerRadius="3" Margin="0,4,0,0" MaxHeight="240" Padding="0,3"
+                        MinWidth="{TemplateBinding ActualWidth}">
+                  <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled">
+                    <ItemsPresenter/>
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsEditable" Value="True">
+                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#4DFFFFFF"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="#60A5FA"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 行（悬停高亮） ============ -->
+    <Style x:Key="RowBorder" TargetType="Border">
+      <Setter Property="Padding" Value="0,2"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="#1FFFFFFF"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Background" Value="#0FFFFFFF"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Grid.IsSharedSizeScope="True">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- ============ 标题栏 ============ -->
+    <Border Grid.Row="0" Background="#202128" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1">
+      <Grid Height="48">
+        <!-- 左侧一道 3px 强调条，开关一关就变灰 -->
+        <Rectangle x:Name="StatusAccent" Width="3" HorizontalAlignment="Left" Fill="#34D399"/>
+
+        <Grid Margin="18,0,16,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="#34D399" Margin="0,0,9,0"/>
+            <TextBlock Text="Y_归层工具" FontSize="13.5" FontWeight="SemiBold"
+                       Foreground="#F1F5F9" VerticalAlignment="Center"/>
+            <TextBlock Text="V1.0" FontSize="11" Foreground="#6E7683"
+                       VerticalAlignment="Center" Margin="9,1,0,0"/>
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- 设置：面板快捷键 / 圆盘触发方式。放在开关左边，
+                 跟"改插件行为"的东西挨在一起，不跟配置增删那几个按钮混。 -->
+            <Button x:Name="BtnSettings" Style="{StaticResource IconButton}"
+                    Margin="0,0,2,0"
+                    ToolTip="设置：面板快捷键 / 圆盘触发方式" Click="BtnSettings_Click">
+              <Grid Width="14" Height="14">
+                <Path Data="M1.6 4.4 H12.4 M1.6 9.6 H12.4"
+                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                      StrokeThickness="1.3" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                <Ellipse Width="4" Height="4" Fill="#202128"
+                         Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                         StrokeThickness="1.3"
+                         HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2.2,2.4,0,0"/>
+                <Ellipse Width="4" Height="4" Fill="#202128"
+                         Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                         StrokeThickness="1.3"
+                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2.2,2.4"/>
+              </Grid>
+            </Button>
+
+            <TextBlock x:Name="TxtSwitchLabel" Text="已启用" Foreground="#98A0AC"
+                       FontSize="11" VerticalAlignment="Center" Margin="0,0,9,0"/>
+            <ToggleButton x:Name="TglEnabled" Style="{StaticResource SwitchToggle}"
+                          VerticalAlignment="Center"
+                          Checked="TglEnabled_Changed" Unchecked="TglEnabled_Changed"/>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+
+    <!-- ============ 配置 ============ -->
+    <Grid Grid.Row="1" Margin="18,10,18,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBlock Text="配置" Foreground="#6E7683" FontSize="11"
+                 VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+      <ComboBox x:Name="CmbProfile" Grid.Column="1" IsEditable="False"
+                SelectionChanged="CmbProfile_SelectionChanged"/>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0"
+                  VerticalAlignment="Center">
+        <Button x:Name="BtnNew" Style="{StaticResource IconButton}"
+                ToolTip="新建配置（沿用当前配置的图层设置）" Click="BtnNew_Click">
+          <Path Data="M8 3 V13 M3 8 H13"
+                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+        </Button>
+
+        <Button x:Name="BtnRename" Style="{StaticResource IconButton}"
+                ToolTip="重命名当前配置" Click="BtnRename_Click">
+          <Path Data="M3.2 12.8 L3.9 10.1 L10.5 3.5 L12.5 5.5 L5.9 12.1 Z"
+                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                StrokeThickness="1.4" StrokeLineJoin="Round"
+                StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+        </Button>
+
+        <Button x:Name="BtnDuplicate" Style="{StaticResource IconButton}"
+                ToolTip="复制当前配置，改出一个新的" Click="BtnDuplicate_Click">
+          <Path Data="M5.5 5.5 H12.5 V12.5 H5.5 Z M3.5 10.5 V3.5 H10.5"
+                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                StrokeThickness="1.4" StrokeLineJoin="Round"
+                StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+        </Button>
+
+        <Button x:Name="BtnDelete" Style="{StaticResource IconDangerButton}"
+                ToolTip="删除当前配置（至少保留一个）" Click="BtnDelete_Click">
+          <Path Data="M3.5 4.8 H12.5 M6.2 4.8 V3.2 H9.8 V4.8 M5 4.8 L5.6 12.8 H10.4 L11 4.8"
+                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                StrokeThickness="1.4" StrokeLineJoin="Round"
+                StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <!-- ============ 提示 ============ -->
+    <TextBlock Grid.Row="2" x:Name="TxtHint" Margin="18,8,18,10"
+               Foreground="#98A0AC" FontSize="11" TextWrapping="Wrap" LineHeight="16"
+               Text="命令前后自动切层 / 还原 · 右键长按 0.18 秒弹圆盘"/>
+
+    <!-- ============ 表头 ============ -->
+    <!-- 列宽用 SharedSizeGroup 跟数据行共用：状态文字多宽列就多宽，
+         不会因为"正常"只有两个字而空出一大块 -->
+    <!-- 1.6：颜色列撤了。一类能配好几个图层以后，"这一类的颜色"没有意义 ——
+         颜色本来就是图层的属性，现在跟着每个图层 chip 走。 -->
+    <Grid Grid.Row="3" x:Name="TableHead" Margin="18,0,18,6">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="76"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto" SharedSizeGroup="StatusCol"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="类别" Foreground="#6E7683" FontSize="10.5"/>
+      <TextBlock Grid.Column="1" Text="目标图层 / 颜色" Foreground="#6E7683" FontSize="10.5"/>
+      <TextBlock Grid.Column="2" Text="状态" Foreground="#6E7683" FontSize="10.5" TextAlignment="Right"/>
+    </Grid>
+
+    <!-- ============ 映射行 ============ -->
+    <Border Grid.Row="4" Background="#1A1B20" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,1">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel x:Name="RowsPanel"/>
+      </ScrollViewer>
+    </Border>
+
+    <!-- ============ 底部 ============ -->
+    <!-- 原来这里还有一条「最近一次」状态条（显示最近一条归层记录）。
+         1.11 撤掉了：它只在"刚才那条线为什么去了那层"时才有点用，
+         平时永远是「暂无记录」，白占一行高度。要看记录用 ALTRACE。 -->
+    <Grid Grid.Row="5" Margin="18,8,18,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <TextBlock x:Name="TxtDirty" Text="● 未保存" Foreground="#F59E0B"
+                 FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Left"
+                 Visibility="Collapsed"/>
+
+      <Button x:Name="BtnSave" Grid.Column="1" Style="{StaticResource PrimaryButton}"
+              Padding="20,0" Click="BtnSave_Click"
+              ToolTip="保存并关闭（Ctrl+S 保存但不关闭）">
+        <StackPanel Orientation="Horizontal">
+          <Path Data="M3.5 8.5 L6.5 11.5 L12.5 4.5" Stroke="#FFFFFF" StrokeThickness="1.6"
+                StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                VerticalAlignment="Center"/>
+          <TextBlock Text="完成" Margin="7,0,0,0" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Button>
+    </Grid>
+  </Grid>
+</Window>

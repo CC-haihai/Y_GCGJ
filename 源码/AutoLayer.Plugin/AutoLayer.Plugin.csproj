@@ -1,0 +1,69 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    成品单文件工程：把 Core 引擎和 UI 面板的源码一起编进一个 DLL，
+    交付时只需要一个「Y_归层工具V1.0.dll」，NETLOAD 它就行。
+
+    为什么不直接合并两个已编译的 DLL：
+      WPF 的 XAML 编译产物（BAML）里写死了程序集名，ILMerge 那类工具
+      合出来的资源路径会对不上，面板会在运行时报找不到资源。
+      从源码一起编，程序集名和资源路径天然一致，最稳。
+
+    程序集名用 ASCII（AutoLayer），输出文件另存为「Y_归层工具V1.0.dll」——
+      避免 WPF 的 pack:// URI 解析非 ASCII 程序集名时踩坑。
+
+    源码工程（Core / UI / TestKit）保持原样，测试照旧跑分离版。
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AutoLayer</AssemblyName>
+    <RootNamespace>AutoLayer</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <CodePage>65001</CodePage>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <OutputPath>..\bin\</OutputPath>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <CadInstallDir Condition="'$(CadInstallDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2021</CadInstallDir>
+    <!-- 交付文件名（跟 Duotab 里其他插件的命名保持一致） -->
+    <DeliveryName>Y_归层工具V1.0.dll</DeliveryName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 引擎源码 -->
+    <Compile Include="..\AutoLayer.Core\*.cs" Link="Core\%(Filename)%(Extension)" />
+    <!-- 面板源码（含 .xaml.cs） -->
+    <Compile Include="..\AutoLayer.UI\*.cs" Link="UI\%(Filename)%(Extension)" />
+    <!-- 面板 XAML -->
+    <Page Include="..\AutoLayer.UI\*.xaml" Link="UI\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="acdbmgd">
+      <HintPath>$(CadInstallDir)\acdbmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="accoremgd">
+      <HintPath>$(CadInstallDir)\accoremgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>$(CadInstallDir)\acmgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- CAD 原生颜色对话框的返回值是 WinForms 的 DialogResult -->
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <!-- 编完额外存一份中文名的交付文件 -->
+  <Target Name="CopyDelivery" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+          DestinationFiles="$(OutputPath)$(DeliveryName)"
+          OverwriteReadOnlyFiles="true" />
+    <Message Importance="high" Text="交付文件: $(OutputPath)$(DeliveryName)" />
+  </Target>
+
+</Project>

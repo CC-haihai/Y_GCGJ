@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Y_归层工具 · 状态显示位置演示</title>
+<style>
+  :root{
+    --bg:#262626; --surface:#2e2e2e; --line:#3a3a3a; --line2:#454545;
+    --text:#e6e6e6; --text2:#a8a8a8; --dim:#7a7a7a;
+    --accent:#3b82c4; --accent-hi:#4a92d4;
+    --ok:#6fbf73; --warn:#e0a050; --info:#6ea8e0; --bad:#e07a7a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:#1b1b1b; color:var(--text);
+    font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    padding:18px; display:flex; justify-content:center;
+  }
+  .card{
+    width:100%; max-width:1040px; background:var(--bg);
+    border:1px solid #333; border-radius:10px; overflow:hidden;
+  }
+
+  /* ---------- 顶栏 ---------- */
+  .top{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line);}
+  .ttl{font-size:13px; font-weight:600;}
+  .ttl small{font-weight:400; color:var(--dim); font-size:11px; margin-left:8px;}
+  .sp{flex:1;}
+  .tabs{display:flex; gap:2px; background:#1f1f1f; border:1px solid var(--line); border-radius:6px; padding:2px;}
+  .tabs button{
+    background:none; border:none; color:var(--text2); font-size:11.5px;
+    padding:4px 10px; border-radius:4px; cursor:pointer; font-family:inherit;
+    transition:background .15s, color .15s;
+  }
+  .tabs button:hover{color:#fff;}
+  .tabs button.on{background:var(--accent); color:#fff;}
+  .replay{
+    background:#333; border:1px solid var(--line2); color:var(--text2);
+    font-size:11.5px; padding:5px 12px; border-radius:5px; cursor:pointer; font-family:inherit;
+  }
+  .replay:hover{background:#3d3d3d; color:#fff;}
+
+  /* ---------- 模拟 CAD 窗口 ---------- */
+  .cad{
+    margin:14px; border:1px solid #111; border-radius:6px; overflow:hidden;
+    display:flex; flex-direction:column; height:520px; background:#1c1c1c;
+    position:relative;
+  }
+  .titlebar{
+    height:28px; flex:0 0 28px; background:#303030; display:flex; align-items:center;
+    padding:0 10px; font-size:11px; color:#9a9a9a; border-bottom:1px solid #222;
+  }
+  .titlebar .wbtn{margin-left:auto; display:flex; gap:12px; color:#888;}
+  .ribbon{
+    height:56px; flex:0 0 56px; background:#2b2b2b; border-bottom:1px solid #222;
+    display:flex; align-items:center; gap:14px; padding:0 12px;
+  }
+  .ribbon .rtab{font-size:10.5px; color:#8a8a8a;}
+  .ribbon .rtab.on{color:#d8d8d8; border-bottom:2px solid var(--accent); padding-bottom:2px;}
+  .ribbon .tools{display:flex; gap:6px; margin-left:6px;}
+  .ribbon .tools i{display:block; width:22px; height:22px; border-radius:3px; background:#383838; border:1px solid #444;}
+  .ribbon .tools i:nth-child(2){background:#3d3d3d;}
+  .ribbon .tools i:nth-child(4){background:#3a3a3a;}
+
+  .stage{flex:1; position:relative; min-height:0; overflow:hidden;}
+  #art{position:absolute; inset:0; width:100%; height:100%;}
+
+  .cmd{
+    flex:0 0 46px; background:#232323; border-top:1px solid #2c2c2c;
+    padding:5px 12px; font-family:Consolas,Menlo,monospace; font-size:11px;
+    color:#9a9a9a; line-height:1.6; overflow:hidden;
+  }
+  .cmd .row{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cmd .row.hi{color:#8fbfe0;}
+
+  .sbar{
+    flex:0 0 26px; background:#2a2a2a; border-top:1px solid #222;
+    display:flex; align-items:center; gap:14px; padding:0 12px;
+    font-size:10.5px; color:#8a8a8a;
+  }
+  .sbar .cell{white-space:nowrap;}
+
+  /* ---------- 状态胶囊 ---------- */
+  .hud{
+    display:flex; align-items:center; gap:7px;
+    background:rgba(24,24,24,.92); border:1px solid #4a4a4a;
+    border-radius:15px; padding:0 11px; height:29px;
+    font-size:11.5px; color:var(--text);
+    white-space:nowrap; opacity:0; transform:translateY(-6px);
+    transition:opacity .22s, transform .22s, border-color .22s, background .22s;
+    box-shadow:0 2px 10px rgba(0,0,0,.45);
+  }
+  .hud.show{opacity:1; transform:translateY(0);}
+  .hud .dot{
+    width:7px; height:7px; border-radius:50%; background:var(--ok);
+    box-shadow:0 0 0 3px rgba(111,191,115,.16);
+  }
+  .hud .nm{font-weight:600;}
+  .hud .sep{width:1px; height:13px; background:#454545;}
+  .hud .cfg{color:var(--info);}
+  .hud .st{color:var(--ok); font-size:10px;}
+  .hud.off .st{color:var(--warn);}
+  .hud .lyr{display:flex; align-items:center; gap:5px; color:var(--text2);}
+  .hud .lyr i{width:8px; height:8px; border-radius:2px; background:var(--info); display:block;}
+  .hud.off{border-color:#6f6f6f; background:rgba(40,40,40,.95); color:#c8c8c8;}
+  .hud.off .dot{background:#8f8f8f; box-shadow:none;}
+  .hud.off .cfg{color:#a8a8a8;}
+  .hud.off .lyr{color:#d0a060;}
+  .hud.off .lyr i{background:#6a6a6a;}
+  .hud.flash{border-color:var(--accent-hi); background:rgba(34,48,60,.95);}
+
+  /* 三个位置 */
+  .hud.tl{position:absolute; left:12px; top:10px; z-index:5;}
+  .hud.br{position:absolute; right:12px; bottom:10px; z-index:5;}
+
+  .hud.sb{
+    position:static; height:19px; padding:0 8px; border-radius:4px;
+    font-size:10px; gap:5px; box-shadow:none; transform:none;
+    border-color:#3d3d3d; background:#333;
+  }
+  .hud.sb .sep, .hud.sb .lyr{display:none;}
+  .hud.sb .nm{font-weight:500;}
+
+  /* ---------- 解说 ---------- */
+  .narr{
+    display:flex; align-items:center; gap:10px; padding:9px 14px;
+    border-top:1px solid var(--line); font-size:12px; color:var(--text2);
+  }
+  .narr .idx{
+    flex:0 0 18px; height:18px; border-radius:50%; background:#3a3a3a;
+    color:#bbb; font-size:10px; display:flex; align-items:center; justify-content:center;
+  }
+  .narr b{color:#fff; font-weight:600;}
+  .narr em{color:var(--info); font-style:normal;}
+
+  /* ---------- 下方说明 ---------- */
+  .notes{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+    padding:0 14px 14px;
+  }
+  .note{
+    background:var(--surface); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; font-size:11px; line-height:1.65; color:var(--text2);
+  }
+  .note h3{font-size:11.5px; color:#ddd; font-weight:600; margin-bottom:4px;}
+  .note .tag{
+    display:inline-block; font-size:9.5px; padding:1px 5px; border-radius:3px;
+    margin-left:5px; vertical-align:1px;
+  }
+  .tag.good{background:rgba(111,191,115,.16); color:var(--ok);}
+  .tag.warn{background:rgba(224,160,80,.16); color:var(--warn);}
+
+  @media (max-width:820px){
+    .notes{grid-template-columns:1fr;}
+    .cad{height:440px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="top">
+    <div class="ttl">状态显示<small>让「开没开、用的哪个配置」一眼看见</small></div>
+    <div class="sp"></div>
+    <div class="tabs" id="tabs">
+      <button data-pos="tl" class="on">左上角</button>
+      <button data-pos="br">右下角</button>
+      <button data-pos="sb">状态栏</button>
+    </div>
+    <button class="replay" id="replay">重播</button>
+  </div>
+
+  <div class="cad">
+    <div class="titlebar">
+      <span>Drawing1.dwg — AutoCAD 2021</span>
+      <span class="wbtn"><span>—</span><span>□</span><span>✕</span></span>
+    </div>
+
+    <div class="ribbon">
+      <span class="rtab on">常用</span>
+      <span class="rtab">插入</span>
+      <span class="rtab">注释</span>
+      <span class="rtab">视图</span>
+      <span class="tools"><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+
+    <div class="stage">
+      <svg id="art" viewBox="0 0 900 360" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="g" width="18" height="18" patternUnits="userSpaceOnUse">
+            <path d="M18 0 L0 0 0 18" fill="none" stroke="#232323" stroke-width="1"/>
+          </pattern>
+        </defs>
+        <rect width="900" height="360" fill="url(#g)"/>
+        <g stroke="#5c86a8" stroke-width="1.6" fill="none">
+          <path d="M170 90 L560 90 L560 270 L170 270 Z"/>
+          <path d="M360 90 L360 270"/>
+          <path d="M170 180 L360 180"/>
+        </g>
+        <g stroke="#4a6d8a" stroke-width="1" fill="none">
+          <path d="M600 110 L700 110 L700 170 L600 170 Z"/>
+          <path d="M600 200 L700 200 L700 250 L600 250 Z"/>
+        </g>
+        <g stroke="#7a6a4a" stroke-width="1">
+          <path d="M170 300 L560 300"/>
+          <path d="M170 295 L170 305"/>
+          <path d="M560 295 L560 305"/>
+        </g>
+        <text x="365" y="316" fill="#8a7a58" font-size="11" text-anchor="middle" font-family="Consolas,monospace">3900</text>
+      </svg>
+
+      <div class="hud tl" id="hud-tl">
+        <span class="dot"></span>
+        <span class="nm">Y_归层工具</span>
+        <span class="sep"></span>
+        <span class="cfg" id="cfg-tl">平面</span>
+        <span class="sep"></span>
+        <span class="lyr"><i id="sw-tl"></i><span id="lyr-tl">E-04 造型线</span></span>
+      </div>
+
+      <div class="hud br" id="hud-br">
+        <span class="dot"></span>
+        <span class="nm">Y_归层工具</span>
+        <span class="sep"></span>
+        <span class="cfg" id="cfg-br">平面</span>
+        <span class="sep"></span>
+        <span class="lyr"><i id="sw-br"></i><span id="lyr-br">E-04 造型线</span></span>
+      </div>
+    </div>
+
+    <div class="cmd" id="cmd">
+      <div class="row" id="cmd1">命令: </div>
+      <div class="row hi" id="cmd2"></div>
+    </div>
+
+    <div class="sbar">
+      <span class="cell">模型</span>
+      <span class="cell">1:100</span>
+      <div class="hud sb" id="hud-sb">
+        <span class="dot"></span>
+        <span class="nm">QH</span>
+        <span class="cfg" id="cfg-sb">平面</span>
+        <span class="st" id="st-sb">开</span>
+      </div>
+      <span class="sp" style="flex:1"></span>
+      <span class="cell">对象捕捉</span>
+      <span class="cell">正交</span>
+      <span class="cell">注释比例 1:100</span>
+    </div>
+  </div>
+
+  <div class="narr">
+    <span class="idx" id="idx">1</span>
+    <span id="txt">图纸打开，插件加载完成 —— 状态自己亮起来，不用你去查。</span>
+  </div>
+
+  <div class="notes">
+    <div class="note">
+      <h3>左上角<span class="tag good">最醒目</span></h3>
+      在 ribbon 下面，视线扫过就能看见。不压 ViewCube（那在右上角）。
+      缺点是会挡住绘图区左上那块。
+    </div>
+    <div class="note">
+      <h3>右下角<span class="tag good">不挡图</span></h3>
+      紧挨命令行，画图时你的视线本来就在这一带。
+      缺点是有可能压住命令行最后一行。
+    </div>
+    <div class="note">
+      <h3>状态栏<span class="tag warn">最省地</span></h3>
+      放进 CAD 自己的状态栏，一点不挡图。但格子只有那么高，
+      只能放「QH 平面」，层名放不下，也最容易被忽略。
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var POS = "tl";
+  var hudTl = document.getElementById("hud-tl");
+  var hudBr = document.getElementById("hud-br");
+  var hudSb = document.getElementById("hud-sb");
+  var idxEl = document.getElementById("idx");
+  var txtEl = document.getElementById("txt");
+  var cmd1 = document.getElementById("cmd1");
+  var cmd2 = document.getElementById("cmd2");
+
+  var STATE = { on: true, cfg: "平面", layer: "E-04 造型线", color: "#6ea8e0" };
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  function render(){
+    ["tl","br","sb"].forEach(function(k){
+      var hud = document.getElementById("hud-" + k);
+      hud.classList.toggle("off", !STATE.on);
+    });
+    document.getElementById("cfg-tl").textContent = STATE.cfg;
+    document.getElementById("cfg-br").textContent = STATE.cfg;
+    document.getElementById("cfg-sb").textContent = STATE.cfg;
+    document.getElementById("st-sb").textContent = STATE.on ? "开" : "关";
+    document.getElementById("lyr-tl").textContent = STATE.on ? STATE.layer : "已关闭";
+    document.getElementById("lyr-br").textContent = STATE.on ? STATE.layer : "已关闭";
+    document.getElementById("sw-tl").style.background = STATE.on ? STATE.color : "#6a6a6a";
+    document.getElementById("sw-br").style.background = STATE.on ? STATE.color : "#6a6a6a";
+  }
+
+  function activeHud(){
+    return document.getElementById("hud-" + POS);
+  }
+
+  function show(){
+    render();
+    activeHud().classList.add("show");
+  }
+
+  function hideAll(){
+    ["tl","br","sb"].forEach(function(k){
+      document.getElementById("hud-" + k).classList.remove("show");
+      document.getElementById("hud-" + k).classList.remove("flash");
+    });
+  }
+
+  function say(i, html){
+    idxEl.textContent = i;
+    txtEl.innerHTML = html;
+  }
+
+  function echo(line){
+    cmd1.textContent = cmd2.textContent || "命令: ";
+    cmd2.textContent = line;
+  }
+
+  var token = 0;
+
+  async function play(t){
+    hideAll();
+    cmd1.textContent = "命令: ";
+    cmd2.textContent = "";
+    STATE.on = true; STATE.cfg = "平面"; STATE.layer = "E-04 造型线"; STATE.color = "#6ea8e0";
+    render();
+
+    say(1, "图纸打开，插件加载完 —— 状态自己亮起来，不用你去查。");
+    await sleep(700);
+    if (t !== token) return;
+    show();
+    await sleep(1500);
+
+    say(2, "画一笔，归层真的发生了：<em>线段 → E-04 造型线</em>。胶囊闪一下，你就知道它在干活。");
+    await sleep(400);
+    if (t !== token) return;
+    echo("Y_归层工具: 线段 → E-04 造型线");
+    activeHud().classList.add("flash");
+    await sleep(900);
+    activeHud().classList.remove("flash");
+    await sleep(900);
+
+    say(3, "临时不想归层，按 <b>ALOFF</b> —— 立刻变灰、写「关」，不会让你以为它还开着。");
+    await sleep(300);
+    if (t !== token) return;
+    STATE.on = false;
+    render();
+    echo("Y_归层工具已关闭（ALOFF）");
+    await sleep(1900);
+
+    say(4, "再按 <b>ALON</b> 打开，配置和图层原样回来。");
+    await sleep(300);
+    if (t !== token) return;
+    STATE.on = true;
+    render();
+    echo("Y_归层工具已开启（ALON）· 平面");
+    await sleep(1700);
+
+    say(5, "换了配置（平面 → 天花），名字和层名一起变 —— 这是最容易被搞混的地方。");
+    await sleep(300);
+    if (t !== token) return;
+    STATE.cfg = "天花";
+    STATE.layer = "E-21 天花线";
+    STATE.color = "#b98be0";
+    render();
+    activeHud().classList.add("flash");
+    echo("配置已切换: 平面 → 天花");
+    await sleep(900);
+    activeHud().classList.remove("flash");
+    await sleep(1500);
+  }
+
+  function restart(){
+    token++;
+    play(token);
+  }
+
+  document.getElementById("tabs").addEventListener("click", function(e){
+    var b = e.target.closest("button");
+    if (!b || !b.dataset.pos) return;
+    POS = b.dataset.pos;
+    document.querySelectorAll("#tabs button").forEach(function(x){
+      x.classList.toggle("on", x === b);
+    });
+    restart();
+  });
+
+  document.getElementById("replay").addEventListener("click", restart);
+
+  // ?pos=tl|br|sb 直接进某个位置（方便截图/分享）
+  var q = (location.search.match(/[?&]pos=(\w+)/) || [])[1];
+  if (q && ["tl","br","sb"].indexOf(q) >= 0){
+    POS = q;
+    document.querySelectorAll("#tabs button").forEach(function(x){
+      x.classList.toggle("on", x.dataset.pos === q);
+    });
+  }
+
+  restart();
+})();
+</script>
+</body>
+</html>

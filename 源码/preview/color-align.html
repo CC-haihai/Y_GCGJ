@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>色号对齐对比 · Y_归层工具</title>
+<style>
+  :root{
+    --bg:#262626; --surface2:#343434;
+    --line:#3a3a3a; --line2:#3f3f3f;
+    --text:#dcdcdc; --dim:#8c8c8c;
+    --ok:#6fbf73; --warn:#e0a050; --info:#6ea8e0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:26px 20px 40px;
+    background:#191919; color:var(--text);
+    font-family:"Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+    font-size:12px; -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; align-items:center; gap:26px;
+  }
+  h1{font-size:13px;font-weight:500;color:var(--dim);margin:0;letter-spacing:.5px;}
+
+  .case{width:480px;}
+  .case > .label{
+    display:flex;align-items:baseline;gap:8px;margin:0 0 7px 2px;
+  }
+  .case > .label b{font-size:12.5px;font-weight:600;color:#e8e8e8;}
+  .case > .label span{font-size:11px;color:#7a7a7a;}
+
+  .win{
+    background:var(--bg);border:1px solid #3a3a3a;border-radius:8px;
+    box-shadow:0 14px 40px rgba(0,0,0,.5);
+    overflow:hidden;padding:12px 0 8px;
+  }
+
+  .table-head{
+    display:grid;grid-template-columns:76px 1fr 50px 44px;gap:8px;
+    padding:0 16px 6px;color:#7a7a7a;font-size:11px;
+  }
+  .table-head .c{text-align:center;}
+  .table-head .r{text-align:right;}
+
+  .rows{border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+  .row{
+    display:grid;grid-template-columns:76px 1fr 50px 44px;gap:8px;align-items:center;
+    padding:5px 16px;border-bottom:1px solid #2f2f2f;
+  }
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:var(--surface2);}
+  .cat{color:var(--text);}
+
+  .field input{
+    width:100%;height:28px;background:#1f1f1f;border:1px solid var(--line2);border-radius:4px;
+    color:var(--text);padding:0 24px 0 8px;font:inherit;outline:none;
+  }
+  .field{position:relative;min-width:0;}
+  .field .arrow{position:absolute;right:7px;top:50%;transform:translateY(-50%);color:#7a7a7a;display:flex;}
+
+  .cwrap{display:flex;align-items:center;gap:6px;min-width:50px;font-size:11px;color:var(--dim);}
+  .sw{width:12px;height:12px;border-radius:2px;border:1px solid #555;flex:0 0 auto;}
+  .sw.dim{opacity:.45;}
+  .cnum{width:26px;}
+  .cnum.dim{opacity:.5;}
+
+  /* —— 三种对齐 —— */
+  .al-center .cwrap{justify-content:center;} .al-center .cnum{text-align:center;}
+  .al-left   .cwrap{justify-content:flex-start;} .al-left .cnum{text-align:left;}
+  .al-right  .cwrap{justify-content:flex-end;} .al-right .cnum{text-align:right;}
+
+  .pill{display:flex;align-items:center;justify-content:flex-end;gap:5px;font-size:11px;white-space:nowrap;}
+  .pill i{width:6px;height:6px;border-radius:50%;display:block;flex:0 0 auto;}
+  .pill.ok{color:var(--ok);}   .pill.ok i{background:var(--ok);}
+  .pill.warn{color:var(--warn);} .pill.warn i{background:var(--warn);}
+  .pill.info{color:var(--info);} .pill.info i{background:var(--info);}
+</style>
+</head>
+<body>
+
+<h1>色号对齐方式对比（同一份数据，只改色块+数字在列内的对齐）</h1>
+
+<!-- ============ 居中 ============ -->
+<div class="case al-center">
+  <div class="label"><b>A · 居中</b><span>色块和数字作为一组居中，数字本身也居中</span></div>
+  <div class="win">
+    <div class="table-head"><span>类别</span><span>目标图层</span><span class="c">颜色</span><span class="r">状态</span></div>
+    <div class="rows">
+      <div class="row"><span class="cat">线段</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">矩形</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">文字</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">标注</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">填充</span><div class="field"><input value="05-填充"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#00ff00"></span><span class="cnum">3</span></span><span class="pill warn"><i></i>已关闭</span></div>
+      <div class="row"><span class="cat">引线</span><div class="field"><input value="06-引线"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw dim" style="background:#ffffff"></span><span class="cnum dim">7</span></span><span class="pill info"><i></i>不存在</span></div>
+      <div class="row"><span class="cat">块</span><div class="field"><input value="07-图块"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ff00ff"></span><span class="cnum">210</span></span><span class="pill warn"><i></i>已锁定</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 靠左 ============ -->
+<div class="case al-left">
+  <div class="label"><b>B · 靠左</b><span>色块贴着输入框，数字紧跟其后</span></div>
+  <div class="win">
+    <div class="table-head"><span>类别</span><span>目标图层</span><span class="c">颜色</span><span class="r">状态</span></div>
+    <div class="rows">
+      <div class="row"><span class="cat">线段</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">矩形</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">文字</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">标注</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">填充</span><div class="field"><input value="05-填充"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#00ff00"></span><span class="cnum">3</span></span><span class="pill warn"><i></i>已关闭</span></div>
+      <div class="row"><span class="cat">引线</span><div class="field"><input value="06-引线"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw dim" style="background:#ffffff"></span><span class="cnum dim">7</span></span><span class="pill info"><i></i>不存在</span></div>
+      <div class="row"><span class="cat">块</span><div class="field"><input value="07-图块"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ff00ff"></span><span class="cnum">210</span></span><span class="pill warn"><i></i>已锁定</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 靠右 ============ -->
+<div class="case al-right">
+  <div class="label"><b>C · 靠右</b><span>整组贴着状态列，数字右对齐，位数不同也齐尾</span></div>
+  <div class="win">
+    <div class="table-head"><span>类别</span><span>目标图层</span><span class="c">颜色</span><span class="r">状态</span></div>
+    <div class="rows">
+      <div class="row"><span class="cat">线段</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">矩形</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">文字</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">标注</span><div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span><span class="pill ok"><i></i>正常</span></div>
+      <div class="row"><span class="cat">填充</span><div class="field"><input value="05-填充"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#00ff00"></span><span class="cnum">3</span></span><span class="pill warn"><i></i>已关闭</span></div>
+      <div class="row"><span class="cat">引线</span><div class="field"><input value="06-引线"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw dim" style="background:#ffffff"></span><span class="cnum dim">7</span></span><span class="pill info"><i></i>不存在</span></div>
+      <div class="row"><span class="cat">块</span><div class="field"><input value="07-图块"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div><span class="cwrap"><span class="sw" style="background:#ff00ff"></span><span class="cnum">210</span></span><span class="pill warn"><i></i>已锁定</span></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

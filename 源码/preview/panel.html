@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Y_归层工具 · 面板预览</title>
+<style>
+  :root{
+    --bg:#262626; --surface:#2e2e2e; --surface2:#343434;
+    --line:#3a3a3a; --line2:#3f3f3f; --line3:#565656;
+    --text:#dcdcdc; --text2:#c8c8c8; --dim:#8c8c8c; --dim2:#6a6a6a;
+    --accent:#3b82c4; --accent-hi:#4a92d4; --accent-dn:#3169a0;
+    --ok:#6fbf73; --warn:#e0a050; --info:#6ea8e0;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; display:flex; align-items:center; justify-content:center;
+    background:#191919; padding:28px;
+    font-family:"Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+    font-size:12px; color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .window{
+    width:480px; background:var(--bg); border:1px solid #3a3a3a; border-radius:8px;
+    box-shadow:0 20px 56px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.03);
+    overflow:hidden;
+  }
+  .titlebar{
+    height:32px; display:flex; align-items:center; padding:0 12px;
+    background:#1f1f1f; border-bottom:1px solid #333;
+    color:#a8a8a8; font-size:12px; user-select:none;
+  }
+  .titlebar .sp{flex:1;}
+  .titlebar .x{
+    width:26px;height:22px;border:none;background:transparent;color:#9a9a9a;
+    font-size:13px;cursor:pointer;border-radius:3px;line-height:1;
+  }
+  .titlebar .x:hover{background:#c0392b;color:#fff;}
+
+  /* ---------- 状态条 ---------- */
+  .statusbar{
+    position:relative; height:52px; background:#2b2b2b;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; padding:0 16px;
+  }
+  .statusbar::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+    background:var(--ok); transition:background .2s;
+  }
+  .panel-off .statusbar::before{background:#4a4a4a;}
+  .brand{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; letter-spacing:.2px;}
+  .brand .dot{
+    width:7px;height:7px;border-radius:50%;background:var(--ok);
+    box-shadow:0 0 8px rgba(111,191,115,.65); transition:all .2s;
+  }
+  .panel-off .brand .dot{background:#555;box-shadow:none;}
+  .brand .sub{font-weight:400;font-size:11px;color:var(--dim2);margin-left:2px;}
+  .statusbar .sp{flex:1;}
+  .switch-label{color:var(--dim);font-size:11px;margin-right:8px;}
+
+  .switch{
+    width:40px;height:21px;border-radius:11px;background:#444;border:none;
+    position:relative;cursor:pointer;padding:0;transition:background .18s;
+  }
+  .switch::after{
+    content:"";position:absolute;width:15px;height:15px;border-radius:50%;
+    background:#e8e8e8;top:3px;left:3px;transition:transform .18s,background .18s;
+    box-shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+  .switch.on{background:var(--accent);}
+  .switch.on::after{transform:translateX(19px);}
+
+  /* ---------- 配置行 ---------- */
+  .profile-row{display:flex;align-items:center;gap:8px;padding:12px 16px 0;}
+  .profile-row .lbl{color:var(--dim);flex:0 0 auto;}
+  .select{
+    flex:1;height:28px;background:#1f1f1f;border:1px solid var(--line2);border-radius:4px;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 9px;cursor:pointer;transition:border-color .15s;min-width:0;
+  }
+  .select:hover{border-color:#4d4d4d;}
+  .select .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .select .arrow{color:#8c8c8c;display:flex;margin-left:6px;flex:0 0 auto;}
+
+  .iconbtn{
+    width:28px;height:28px;border:1px solid transparent;background:transparent;
+    border-radius:5px;display:flex;align-items:center;justify-content:center;
+    color:#909090;cursor:pointer;padding:0;transition:background .13s,color .13s;
+    flex:0 0 auto;
+  }
+  .iconbtn:hover{background:#3a3a3a;color:#e4e4e4;}
+  .iconbtn:active{background:#2e2e2e;}
+  .iconbtn.danger:hover{background:#4a2e2b;color:#e88b80;}
+  .iconbtn.danger:active{background:#3a2320;}
+
+  .hint{padding:8px 16px 12px;color:var(--dim);line-height:1.55;font-size:11.5px;}
+
+  /* ---------- 表格 ---------- */
+  .table-head{
+    display:grid;grid-template-columns:76px 1fr 50px 44px;gap:8px;
+    padding:0 16px 6px;color:#7a7a7a;font-size:11px;transition:opacity .2s;
+  }
+  .table-head .r{text-align:right;}
+  .rows{
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    overflow:auto;transition:opacity .2s;
+  }
+  .rows::-webkit-scrollbar{width:9px;}
+  .rows::-webkit-scrollbar-track{background:#242424;}
+  .rows::-webkit-scrollbar-thumb{background:#444;border-radius:5px;border:2px solid #242424;}
+
+  .row{
+    display:grid;grid-template-columns:76px 1fr 50px 44px;gap:8px;align-items:center;
+    padding:5px 16px;border-bottom:1px solid #2f2f2f;
+  }
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:var(--surface2);}
+  .cat{color:var(--text);}
+
+  /* 色块 + 色号 */
+  .cwrap{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:50px;font-size:11px;color:var(--dim);cursor:pointer;}
+  .sw{width:12px;height:12px;border-radius:2px;border:1px solid #555;flex:0 0 auto;}
+  .sw.dim{opacity:.45;}
+  .cnum{width:26px;text-align:right;}
+  .cnum.dim{opacity:.5;}
+
+  .field{position:relative;min-width:0;}
+  .field input{
+    width:100%;height:28px;background:#1f1f1f;border:1px solid var(--line2);border-radius:4px;
+    color:var(--text);padding:0 24px 0 8px;font:inherit;outline:none;
+    transition:border-color .15s,background .15s;
+  }
+  .field input:hover{border-color:#4d4d4d;}
+  .field input:focus{border-color:var(--accent);background:#1c1c1c;}
+  .field .arrow{
+    position:absolute;right:7px;top:50%;transform:translateY(-50%);
+    color:#7a7a7a;pointer-events:none;display:flex;
+  }
+
+  .pill{
+    display:flex;align-items:center;justify-content:flex-end;gap:5px;
+    font-size:11px;white-space:nowrap;
+  }
+  .pill i{width:6px;height:6px;border-radius:50%;display:block;flex:0 0 auto;}
+  .pill.ok{color:var(--ok);}      .pill.ok i{background:var(--ok);}
+  .pill.warn{color:var(--warn);}  .pill.warn i{background:var(--warn);}
+  .pill.info{color:var(--info);}  .pill.info i{background:var(--info);}
+  .pill.none{color:#6a6a6a;}      .pill.none i{background:#4a4a4a;}
+
+  /* ---------- 底部 ---------- */
+  .trace{
+    display:flex;align-items:center;gap:8px;padding:9px 16px;
+    background:#282828;border-bottom:1px solid var(--line);
+    font-size:11px;transition:opacity .2s;
+  }
+  .trace .t{color:#6a6a6a;font-variant-numeric:tabular-nums;flex:0 0 auto;}
+  .trace .b{color:#a8a8a8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .footer{display:flex;align-items:center;gap:8px;padding:12px 16px 14px;}
+  .footer .sp{flex:1;}
+  .dirty{color:var(--warn);font-size:11px;opacity:0;transition:opacity .15s;}
+  .dirty.show{opacity:1;}
+
+  button.act{
+    height:32px;padding:0 16px;border-radius:6px;font:inherit;cursor:pointer;
+    transition:background .15s,border-color .15s,color .15s;
+  }
+  button.ghost{background:transparent;color:var(--text2);border:1px solid var(--line2);}
+  button.ghost:hover{background:#333;border-color:var(--line3);color:#e8e8e8;}
+  button.ghost:active{background:#2a2a2a;border-color:#4a4a4a;}
+  button.primary{background:var(--accent);color:#fff;border:1px solid var(--accent);font-weight:500;
+    display:flex;align-items:center;justify-content:center;gap:7px;}
+  button.primary:hover{background:var(--accent-hi);border-color:var(--accent-hi);}
+  button.primary:active{background:var(--accent-dn);border-color:var(--accent-dn);}
+
+  .panel-off .table-head,
+  .panel-off .rows,
+  .panel-off .trace{opacity:.6;}
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="titlebar">
+    <span>Y_归层工具</span><span class="sp"></span>
+    <button class="x" title="关闭">&#10005;</button>
+  </div>
+
+  <div id="panel">
+    <div class="statusbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <span>Y_归层工具</span>
+        <span class="sub">AutoLayer</span>
+      </div>
+      <span class="sp"></span>
+      <span class="switch-label" id="swLabel">已启用</span>
+      <button class="switch on" id="sw" title="切换Y_归层工具"></button>
+    </div>
+
+    <div class="profile-row">
+      <span class="lbl">配置</span>
+      <div class="select" id="sel">
+        <span class="name" id="selName">住宅标准</span>
+        <span class="arrow">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
+               stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4 L5 7 L8 4"/>
+          </svg>
+        </span>
+      </div>
+
+      <button class="iconbtn" id="btnNew" title="新建配置（沿用当前配置的图层设置）">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.5" stroke-linecap="round">
+          <path d="M8 3 V13 M3 8 H13"/>
+        </svg>
+      </button>
+
+      <button class="iconbtn" id="btnRename" title="重命名当前配置">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M3.2 12.8 L3.9 10.1 L10.5 3.5 L12.5 5.5 L5.9 12.1 Z"/>
+        </svg>
+      </button>
+
+      <button class="iconbtn" id="btnDup" title="复制当前配置">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M5.5 5.5 H12.5 V12.5 H5.5 Z M3.5 10.5 V3.5 H10.5"/>
+        </svg>
+      </button>
+
+      <button class="iconbtn danger" id="btnDel" title="删除当前配置">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+             stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M3.5 4.8 H12.5 M6.2 4.8 V3.2 H9.8 V4.8 M5 4.8 L5.6 12.8 H10.4 L11 4.8"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="hint" id="hint">所有类别默认归 0 层。绘图命令开始前会切到对应图层，命令结束后还原。</div>
+
+    <div class="table-head">
+      <span>类别</span>
+      <span>目标图层</span>
+      <span style="text-align:center">颜色</span>
+      <span class="r">状态</span>
+    </div>
+
+    <div class="rows" id="rows">
+      <div class="row"><span class="cat">线段</span>
+        <div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span>
+        <span class="pill ok"><i></i>正常</span></div>
+
+      <div class="row"><span class="cat">矩形</span>
+        <div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span>
+        <span class="pill ok"><i></i>正常</span></div>
+
+      <div class="row"><span class="cat">文字</span>
+        <div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span>
+        <span class="pill ok"><i></i>正常</span></div>
+
+      <div class="row"><span class="cat">标注</span>
+        <div class="field"><input value="0"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw" style="background:#ffffff"></span><span class="cnum">7</span></span>
+        <span class="pill ok"><i></i>正常</span></div>
+
+      <div class="row"><span class="cat">填充</span>
+        <div class="field"><input value="05-填充"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw" style="background:#00ff00"></span><span class="cnum">3</span></span>
+        <span class="pill warn"><i></i>已关闭</span></div>
+
+      <div class="row"><span class="cat">引线</span>
+        <div class="field"><input value="06-引线"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw dim" style="background:#ffffff"></span><span class="cnum dim">7</span></span>
+        <span class="pill info"><i></i>不存在</span></div>
+
+      <div class="row"><span class="cat">块</span>
+        <div class="field"><input value="07-图块"><span class="arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4 L5 7 L8 4"/></svg></span></div>
+        <span class="cwrap"><span class="sw" style="background:#ff00ff"></span><span class="cnum">210</span></span>
+        <span class="pill warn"><i></i>已锁定</span></div>
+    </div>
+
+    <div class="trace">
+      <span class="t">10:18:42</span>
+      <span class="b">LINE &#8594; 0（线段）</span>
+    </div>
+
+    <div class="footer">
+      <span class="dirty" id="dirty">&#9679; 未保存</span>
+      <span class="sp"></span>
+      <button class="act primary" id="btnSave">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#fff"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3.5 8.5 L6.5 11.5 L12.5 4.5"/>
+        </svg>
+        完成
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var panel = document.getElementById('panel');
+  var sw = document.getElementById('sw');
+  var swLabel = document.getElementById('swLabel');
+  var hint = document.getElementById('hint');
+  var dirty = document.getElementById('dirty');
+
+  function render() {
+    var on = sw.classList.contains('on');
+    panel.classList.toggle('panel-off', !on);
+    swLabel.textContent = on ? '已启用' : '已停用';
+    hint.textContent = on
+      ? '所有类别默认归 0 层。绘图命令开始前会切到对应图层，命令结束后还原。'
+      : '未启用。不介入画图，图元落在你当前图层。';
+  }
+
+  sw.addEventListener('click', function () {
+    sw.classList.toggle('on');
+    render();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.field input'), function (inp) {
+    inp.addEventListener('input', function () { dirty.classList.add('show'); });
+  });
+
+  document.getElementById('btnSave').addEventListener('click', function () {
+    dirty.classList.remove('show');
+    hint.textContent = '已保存并关闭。之后画图直接按新配置归层，要改再按 QH。';
+  });
+
+  var names = ['住宅标准', '办公标准', '结构出图'];
+  var pi = 0;
+  document.getElementById('sel').addEventListener('click', function () {
+    pi = (pi + 1) % names.length;
+    document.getElementById('selName').textContent = names[pi];
+  });
+
+  document.getElementById('btnRename').addEventListener('click', function () {
+    alert('弹出命名框（与面板同一套深色样式）');
+  });
+
+  document.getElementById('btnDup').addEventListener('click', function () {
+    hint.textContent = '已复制为「住宅标准 副本」，改名后填好图层再保存。';
+    dirty.classList.add('show');
+  });
+
+  document.getElementById('btnDel').addEventListener('click', function () {
+    alert('会弹出深色确认框：\n\n确定删除配置「住宅标准」？\n这个配置里的图层映射会一起删掉，无法撤销。');
+  });
+
+  render();
+</script>
+</body>
+</html>
