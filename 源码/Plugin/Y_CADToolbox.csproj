@@ -1,0 +1,102 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    合并版单文件工程：自动归层(QH) + 图层切换面板(CC) 一起编进一个 DLL。
+
+    版本兼容策略（支持 AutoCAD 2016 及以上）：
+      引用 AutoCAD 2016 的托管程序集（20.1）+ 目标框架 net45 编译。
+      AutoCAD 的 acdbmgd/acmgd/accoremgd 都不是强名称程序集，CLR 只按简单名绑定、
+      不校验版本，所以低版本编出来的 DLL 能被高版本 CAD 直接加载；
+      反过来（高版本编、低版本跑）才会因 API 缺失崩。
+      代价是：编译期就能挡住 2017+ 才有的 API，不会埋雷到用户机器上。
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net45</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AutoLayer</AssemblyName>
+    <RootNamespace>AutoLayer</RootNamespace>
+    <LangVersion>10.0</LangVersion>
+    <CodePage>65001</CodePage>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);NU1701;CS0618;CS0612</NoWarn>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <OutputPath>..\bin\</OutputPath>
+    <AssemblyTitle>Y_归层工具</AssemblyTitle>
+    <Product>Y_归层工具</Product>
+    <Company>Y-CADSettings</Company>
+    <Version>2.1.0</Version>
+    <FileVersion>2.1.0.0</FileVersion>
+    <NeutralLanguage>zh-CN</NeutralLanguage>
+    <!-- 交付文件名 -->
+    <DeliveryName>Y_归层工具V2.1.dll</DeliveryName>
+
+    <!--
+      引用（CAD 托管程序集）从哪来：
+        1. 仓库里的 refs\ —— AutoCAD 2016 (20.1) 的引用，出货用这个，保证 2016 能装；
+        2. 没有 refs 就退回本机 CAD 安装目录（CadInstallDir）。
+           用本机高版本编出来的 DLL 只能在高版本 CAD 上用，兼容 2016 就必须用 refs。
+    -->
+    <CadInstallDir Condition="'$(CadInstallDir)' == ''">C:\Program Files\Autodesk\AutoCAD 2021</CadInstallDir>
+    <CadRefDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\refs\AcDbMgd.dll')">$(MSBuildThisFileDirectory)..\..\refs</CadRefDir>
+    <CadRefDir Condition="'$(CadRefDir)' == ''">$(CadInstallDir)</CadRefDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 归层引擎 -->
+    <Compile Include="..\Core\*.cs" Link="Core\%(Filename)%(Extension)" />
+    <!-- 主面板 / 状态条 / 圆盘 / 设置 -->
+    <Compile Include="..\UI\*.cs" Link="UI\%(Filename)%(Extension)" />
+    <Page Include="..\UI\*.xaml" Link="UI\%(Filename)%(Extension)" />
+    <!-- 图层切换面板（原 CC） -->
+    <Compile Include="..\UI\QuickSwitch\*.cs" Link="UI\QuickSwitch\%(Filename)%(Extension)" />
+    <Page Include="..\UI\QuickSwitch\*.xaml" Link="UI\QuickSwitch\%(Filename)%(Extension)" />
+    <!-- 视口图层状态（2026-11-13 由独立测试版并入：进视口自动切配置 + 视口标记） -->
+    <Compile Include="..\ViewportTool\*.cs" Link="Viewport\%(Filename)%(Extension)" />
+    <Compile Include="..\ViewportTool\Ui\*.cs" Link="Viewport\Ui\%(Filename)%(Extension)" />
+    <Page Include="..\ViewportTool\Ui\*.xaml" Link="Viewport\Ui\%(Filename)%(Extension)" />
+    <!-- 帮助页收款码：嵌进 DLL，不依赖外部文件 -->
+    <Resource Include="..\UI\donate.png" Link="UI\donate.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- AutoCAD 2016 (20.1) 托管 API：运行时由 CAD 自身提供，不复制到输出 -->
+    <Reference Include="acdbmgd">
+      <HintPath>$(CadRefDir)\AcDbMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="accoremgd">
+      <HintPath>$(CadRefDir)\AcCoreMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="acmgd">
+      <HintPath>$(CadRefDir)\AcMgd.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="AdWindows">
+      <HintPath>$(CadRefDir)\AdWindows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net45" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- 测试版（TestBuild）分支已按用户 2026-11-11 拍板删除：
+       只出一份正式版 DLL，不再区分「测试版 / 正式版」，避免拿错版本。
+       2026-11-12 清理：源码里残留的 #if TESTBUILD 段已一并删除，
+       现在整个工程没有任何条件编译分支。 -->
+
+  <!-- 编完额外存一份中文名的交付文件 -->
+  <Target Name="CopyDelivery" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
+          DestinationFiles="$(OutputPath)$(DeliveryName)"
+          OverwriteReadOnlyFiles="true" />
+    <Message Importance="high" Text="交付文件: $(OutputPath)$(DeliveryName)" />
+  </Target>
+
+</Project>

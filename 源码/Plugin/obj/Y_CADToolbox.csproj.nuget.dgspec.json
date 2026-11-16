@@ -1,0 +1,69 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\WorkBuddy工作空间\\归层工具\\Y-AutoLayer_github\\源码\\Plugin\\Y_CADToolbox.csproj": {}
+  },
+  "projects": {
+    "D:\\WorkBuddy工作空间\\归层工具\\Y-AutoLayer_github\\源码\\Plugin\\Y_CADToolbox.csproj": {
+      "version": "2.1.0",
+      "restore": {
+        "projectUniqueName": "D:\\WorkBuddy工作空间\\归层工具\\Y-AutoLayer_github\\源码\\Plugin\\Y_CADToolbox.csproj",
+        "projectName": "AutoLayer",
+        "projectPath": "D:\\WorkBuddy工作空间\\归层工具\\Y-AutoLayer_github\\源码\\Plugin\\Y_CADToolbox.csproj",
+        "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
+        "outputPath": "D:\\WorkBuddy工作空间\\归层工具\\Y-AutoLayer_github\\源码\\Plugin\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net45"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net45": {
+            "framework": "net45",
+            "targetAlias": "net45",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "noWarn": [
+            "NU1701"
+          ],
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.400"
+      },
+      "frameworks": {
+        "net45": {
+          "framework": "net45",
+          "targetAlias": "net45",
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            },
+            "Microsoft.NETFramework.ReferenceAssemblies.net45": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

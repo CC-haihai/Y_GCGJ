@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "ui9TUgvD4Yc=",
+  "success": true,
+  "projectFilePath": "D:\\WorkBuddy工作空间\\归层工具\\Y-AutoLayer_github\\源码\\Plugin\\Y_CADToolbox.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.netframework.referenceassemblies\\1.0.3\\microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\microsoft.netframework.referenceassemblies.net45\\1.0.3\\microsoft.netframework.referenceassemblies.net45.1.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

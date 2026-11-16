@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Y_归层工具 V2.1 单文件安装器。
+    与 CAD 完全解耦：不引用任何 AutoCAD 程序集，net45 保证 Win7 也能跑。
+    插件 dll 作为嵌入资源打进 exe，运行时释放到 %LOCALAPPDATA%\YGuiCeng。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net45</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>YGuiCeng.Setup</AssemblyName>
+    <RootNamespace>YGuiCeng.Setup</RootNamespace>
+    <LangVersion>10.0</LangVersion>
+    <CodePage>65001</CodePage>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\</OutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AssemblyTitle>Y_归层工具 V2.1 安装器</AssemblyTitle>
+    <Product>Y_归层工具</Product>
+    <Version>2.1.0</Version>
+    <FileVersion>2.1.0.0</FileVersion>
+    <NeutralLanguage>zh-CN</NeutralLanguage>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
+    <DeliveryName>Y_归层工具V2.1_安装器.exe</DeliveryName>
+  </PropertyGroup>
+
+  <!--
+    兼容两种源码布局：
+      开发工作区 merged\exe-installer\ → ..\dist\ 放 dll
+      发布包 源码\安装器\           → ..\..\（仓库根）放 dll
+  -->
+  <PropertyGroup>
+    <DeliveryDir Condition="Exists('..\dist')">..\dist\</DeliveryDir>
+    <DeliveryDir Condition="'$(DeliveryDir)' == ''">..\..\</DeliveryDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      插件 DLL 用通配直接取「插件工程刚编出来的那个」：
+        · 文件名带版本号也能吃到，安装器工程以后翻版不用改；
+        · 顺手去掉「先拷包根、再打安装器」这个顺序坑 —— 忘了拷就会打进旧 DLL。
+    -->
+    <EmbeddedResource Include="..\bin\Y_归层工具V*.dll">
+      <LogicalName>Plugin.dll</LogicalName>
+    </EmbeddedResource>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net45" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="CopyDelivery" AfterTargets="Build">
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).exe"
+          DestinationFiles="$(DeliveryDir)$(DeliveryName)"
+          OverwriteReadOnlyFiles="true" />
+    <Message Importance="high" Text="安装器: $(DeliveryDir)$(DeliveryName)" />
+  </Target>
+</Project>

@@ -1,0 +1,1133 @@
+﻿<Window x:Class="VpLayer.Ui.VpPanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="视口图层工具"
+        Width="520" Height="470"
+        MinWidth="470" MinHeight="420" MaxHeight="740"
+        WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        Background="{DynamicResource Yb.BgDeep}"
+        Foreground="{DynamicResource Yb.Text}"
+        FontFamily="Segoe UI, Microsoft YaHei UI"
+        FontSize="12"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
+
+    <!--
+      V2.1 界面重构：方案 B「任务 Tab 主从」（用户 2026-11-14 敲板）。
+      结构：标题 / 任务 Tab（批量生成 ↔ 视口标记）/ 内容主区 / 底部常驻生成条。
+
+      排版依据是使用频率，不是流程步骤：
+        高频常驻同屏  —— 选图框、拾取图框、选状态、框选并生成、刷取状态
+        中频就近       —— 重框内框/改名/删除、刷到视口、对齐配置、标记视口、取消标记
+        低频收进 ⚙     —— 配置文件（路径 + 导出 / 导入）
+      窗口高度固定 470（用户 2026-11-14 敲板，不再随内容伸缩），内容多了在列表里滚动。
+
+      视觉令牌与 源码/UI/UiTheme.cs 是同一套（design/01-visual-spec.md §2）。
+      红线：XAML 里不许出现裸 #RRGGBB；字号只用 8.5 / 10.5 / 11.5 / 12 / 13.5 / 20。
+      保留全部 x:Name 与 Click / SelectionChanged 事件名，业务逻辑未改。
+    -->
+    <Window.Resources>
+        <ResourceDictionary>
+
+            <!-- ======== §2 视觉令牌（与 UiTheme.cs 同步） ======== -->
+            <SolidColorBrush x:Key="Yb.BgDeep" Color="#141519"/>
+            <SolidColorBrush x:Key="Yb.Surface" Color="#202128"/>
+            <SolidColorBrush x:Key="Yb.Raised" Color="#26282F"/>
+            <SolidColorBrush x:Key="Yb.Sunken" Color="#1A1B20"/>
+            <SolidColorBrush x:Key="Yb.Line" Color="#1FFFFFFF"/>
+            <SolidColorBrush x:Key="Yb.LineStrong" Color="#33FFFFFF"/>
+            <SolidColorBrush x:Key="Yb.LineControl" Color="#66FFFFFF"/>
+            <SolidColorBrush x:Key="Yb.LineHover" Color="#80FFFFFF"/>
+            <SolidColorBrush x:Key="Yb.Text" Color="#F1F5F9"/>
+            <SolidColorBrush x:Key="Yb.TextDim" Color="#98A0AC"/>
+            <SolidColorBrush x:Key="Yb.TextFaint" Color="#8A93A0"/>
+            <SolidColorBrush x:Key="Yb.TextDisabled" Color="#565A62"/>
+            <SolidColorBrush x:Key="Yb.TextOnAccent" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="Yb.SelectionText" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="Yb.Accent" Color="#2563EB"/>
+            <SolidColorBrush x:Key="Yb.AccentHi" Color="#3B82F6"/>
+            <SolidColorBrush x:Key="Yb.AccentLo" Color="#1D4ED8"/>
+            <SolidColorBrush x:Key="Yb.AccentLine" Color="#60A5FA"/>
+            <SolidColorBrush x:Key="Yb.AccentSoft" Color="#1E2A44"/>
+            <SolidColorBrush x:Key="Yb.AccentInk" Color="#DBEAFE"/>
+            <SolidColorBrush x:Key="Yb.Ok" Color="#34D399"/>
+            <SolidColorBrush x:Key="Yb.Warn" Color="#F59E0B"/>
+            <SolidColorBrush x:Key="Yb.Hover" Color="#14FFFFFF"/>
+            <SolidColorBrush x:Key="Yb.HoverRow" Color="#0FFFFFFF"/>
+            <SolidColorBrush x:Key="Yb.Pressed" Color="#0AFFFFFF"/>
+            <SolidColorBrush x:Key="Yb.SelectionBg" Color="#1E2A44"/>
+            <SolidColorBrush x:Key="Yb.SelectionMark" Color="#60A5FA"/>
+            <SolidColorBrush x:Key="Yb.FocusRing" Color="#60A5FA"/>
+            <SolidColorBrush x:Key="Yb.SwitchTrack" Color="#3A3D45"/>
+            <SolidColorBrush x:Key="Yb.SwitchKnob" Color="#F1F5F9"/>
+            <SolidColorBrush x:Key="Yb.EmptyArt" Color="#2E313A"/>
+            <SolidColorBrush x:Key="Yb.EmptyArtFill" Color="#1A1B20"/>
+            <SolidColorBrush x:Key="Yb.ScrollThumb" Color="#4DFFFFFF"/>
+            <SolidColorBrush x:Key="Yb.ScrollThumbHover" Color="#66FFFFFF"/>
+
+            <!-- ======== 文本 ======== -->
+            <Style x:Key="Caption" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10.5"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+            </Style>
+            <Style x:Key="Dim" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+            <Style x:Key="Meta" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextFaint}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+                <Setter Property="LineHeight" Value="16"/>
+            </Style>
+            <!-- 只在真出问题时才出现的一行（图框文件不在了 / 图框没尺寸） -->
+            <Style x:Key="WarnText" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="10.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Warn}"/>
+                <Setter Property="TextWrapping" Value="Wrap"/>
+            </Style>
+
+            <!-- ======== 卡片 / 分区 ======== -->
+            <Style x:Key="Card" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource Yb.Surface}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.LineStrong}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="8"/>
+                <Setter Property="Padding" Value="14,12"/>
+            </Style>
+            <Style x:Key="SettingBox" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource Yb.Sunken}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.Line}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="6"/>
+                <Setter Property="Padding" Value="10,8"/>
+            </Style>
+
+            <!-- ======== 按钮族 ======== -->
+            <Style x:Key="PrimaryButton" TargetType="Button">
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="MinWidth" Value="88"/>
+                <Setter Property="Padding" Value="20,0"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextOnAccent}"/>
+                <Setter Property="Background" Value="{StaticResource Yb.Accent}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.Accent}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.AccentHi}"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.AccentLo}"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLo}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.32"/>
+                                    <Setter Property="Cursor" Value="Arrow"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="GhostButton" TargetType="Button">
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Padding" Value="12,0"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                    CornerRadius="6">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.LineHover}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Pressed}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.32"/>
+                                    <Setter Property="Cursor" Value="Arrow"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="GhostSmall" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                <Setter Property="Height" Value="26"/>
+                <Setter Property="Padding" Value="9,0"/>
+                <Setter Property="FontSize" Value="11.5"/>
+            </Style>
+
+            <Style x:Key="TextButton" TargetType="Button">
+                <Setter Property="Height" Value="26"/>
+                <Setter Property="Padding" Value="8,0"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Pressed}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.32"/>
+                                    <Setter Property="Cursor" Value="Arrow"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="IconButton" TargetType="Button">
+                <Setter Property="Width" Value="26"/>
+                <Setter Property="Height" Value="26"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="Transparent" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Pressed}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.32"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ======== 对齐表专用：假下拉 + 选择层 + 方向小按钮 ========
+                 原来的「绑定到」用的是 DarkCombo。那套 ComboBox 模板里的 Popup 在
+                 CAD 面板（ShowInTaskbar=False 的普通 Window）里点开弹不出来，
+                 用户 2026-11-16 报「展不开」。换成同一窗口内自绘的选择层，
+                 不依赖 Popup，顺带能把列表做宽一点，长配置名不再截成「…」。 -->
+
+            <!-- 长得像下拉框，其实是个按钮：点了弹 AlignPicker -->
+            <Style x:Key="ComboLike" TargetType="Button">
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{StaticResource Yb.Sunken}"
+                                    BorderBrush="{StaticResource Yb.LineControl}" BorderThickness="1"
+                                    CornerRadius="6">
+                                <Grid>
+                                    <TextBlock Margin="9,0,24,0" VerticalAlignment="Center"
+                                               Text="{TemplateBinding Content}"
+                                               TextTrimming="CharacterEllipsis"
+                                               Foreground="{StaticResource Yb.Text}"/>
+                                    <Path HorizontalAlignment="Right" VerticalAlignment="Center"
+                                          Margin="0,0,9,0" Data="M0,0 L9,0 L4.5,5.5 Z"
+                                          Fill="{StaticResource Yb.TextDim}"/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush"
+                                            Value="{StaticResource Yb.LineStrong}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 选择层里的一项 -->
+            <Style x:Key="PickerItem" TargetType="Button">
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="10,0"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="Transparent">
+                                <TextBlock Text="{TemplateBinding Content}"
+                                           Margin="{TemplateBinding Padding}"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource Yb.Text}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{StaticResource Yb.Hover}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{StaticResource Yb.Pressed}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 方向小按钮：选中靠底色，不靠文案变长，列宽才不会来回跳 -->
+            <Style x:Key="MiniToggle" TargetType="Button">
+                <Setter Property="Height" Value="26"/>
+                <Setter Property="Padding" Value="7,0"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{StaticResource Yb.Hover}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{StaticResource Yb.Pressed}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Bd" Property="Opacity" Value="0.32"/>
+                                    <Setter Property="Cursor" Value="Arrow"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 次级主操作：有强调但不抢全窗口唯一的主按钮 -->
+            <Style x:Key="SoftButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+                <Setter Property="Height" Value="32"/>
+                <Setter Property="Background" Value="{StaticResource Yb.AccentSoft}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.AccentInk}"/>
+            </Style>
+
+            <!-- ======== 任务 Tab ======== -->
+            <Style x:Key="TabRadio" TargetType="RadioButton">
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+                <Setter Property="Padding" Value="14,9"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="Bd" Background="Transparent" BorderThickness="0,0,0,2"
+                                    BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ======== 开关（与主面板 SwitchToggle 同规格） ======== -->
+            <Style x:Key="SwitchToggle" TargetType="ToggleButton">
+                <Setter Property="Width" Value="40"/>
+                <Setter Property="Height" Value="22"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Focusable" Value="True"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Grid>
+                                <Border x:Name="Track" CornerRadius="11"
+                                        Background="{StaticResource Yb.SwitchTrack}"
+                                        BorderBrush="{StaticResource Yb.Line}" BorderThickness="1"/>
+                                <Ellipse x:Name="Knob" Width="16" Height="16"
+                                         Fill="{StaticResource Yb.SwitchKnob}"
+                                         HorizontalAlignment="Left" Margin="3,0,0,0"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="Track" Property="Background" Value="{StaticResource Yb.Accent}"/>
+                                    <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+                                    <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
+                                    <Setter TargetName="Knob" Property="Margin" Value="0,0,3,0"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Knob" Property="Fill" Value="{StaticResource Yb.TextOnAccent}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.32"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ======== 输入 / 下拉 ======== -->
+            <Style TargetType="TextBox">
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="Background" Value="{StaticResource Yb.Sunken}"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="6,4"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="CaretBrush" Value="{StaticResource Yb.Text}"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+
+            <Style TargetType="ComboBoxItem">
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                <Setter Property="Padding" Value="9,6"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBoxItem">
+                            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter TextElement.Foreground="{StaticResource Yb.Text}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.SelectionBg}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="DarkCombo" TargetType="ComboBox">
+                <Setter Property="Height" Value="30"/>
+                <Setter Property="FontSize" Value="11.5"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ComboBox">
+                            <Grid>
+                                <ToggleButton x:Name="tb" Focusable="False" ClickMode="Press"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                                          RelativeSource={RelativeSource TemplatedParent}}">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="{StaticResource Yb.Sunken}"
+                                                    BorderBrush="{StaticResource Yb.LineControl}"
+                                                    BorderThickness="1" CornerRadius="6">
+                                                <Grid>
+                                                    <ContentPresenter Margin="9,0,26,0" VerticalAlignment="Center"
+                                                                      TextElement.Foreground="{StaticResource Yb.Text}"
+                                                                      Content="{Binding SelectionBoxItem,
+                                                                                RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                                                    <Path HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                          Margin="0,0,10,0" Data="M0,0 L9,0 L4.5,5.5 Z"
+                                                          Fill="{StaticResource Yb.TextDim}" />
+                                                </Grid>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+                                <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                                       Focusable="False" IsOpen="{TemplateBinding IsDropDownOpen}">
+                                    <Border Background="{StaticResource Yb.Raised}"
+                                            BorderBrush="{StaticResource Yb.LineStrong}" BorderThickness="1"
+                                            CornerRadius="8" Margin="0,2,0,0" MaxHeight="220"
+                                            MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ComboBox}}">
+                                        <ScrollViewer>
+                                            <ItemsPresenter />
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- ======== 列表（三重编码 + 28 行高） ======== -->
+            <!-- 深色滚动条：系统默认那条浅灰槽在深底上像贴了块白补丁，而且细到看不见 -->
+            <Style TargetType="ScrollBar">
+                <Setter Property="Width" Value="8"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Background="Transparent">
+                                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageUpCommand"
+                                                      Opacity="0" Focusable="False"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Border x:Name="Tb" CornerRadius="3" Margin="2,2"
+                                                            Background="{StaticResource Yb.ScrollThumb}"/>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Tb" Property="Background"
+                                                                    Value="{StaticResource Yb.ScrollThumbHover}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageDownCommand"
+                                                      Opacity="0" Focusable="False"/>
+                                    </Track.IncreaseRepeatButton>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="ListBox">
+                <Setter Property="Background" Value="{StaticResource Yb.Sunken}"/>
+                <Setter Property="BorderBrush" Value="{StaticResource Yb.LineStrong}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            </Style>
+
+            <Style TargetType="ListBoxItem">
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="10,0"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Grid>
+                                <Border x:Name="Bd" Background="Transparent"
+                                        BorderThickness="0,0,0,1" BorderBrush="{StaticResource Yb.Line}"/>
+                                <Rectangle x:Name="Mark" Width="2" Fill="{StaticResource Yb.SelectionMark}"
+                                           HorizontalAlignment="Left" Visibility="Collapsed"/>
+                                <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.HoverRow}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.SelectionBg}"/>
+                                    <Setter TargetName="Mark" Property="Visibility" Value="Visible"/>
+                                    <Setter Property="Foreground" Value="{StaticResource Yb.SelectionText}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>   <!-- 标题 -->
+            <RowDefinition Height="Auto"/>   <!-- 任务 Tab -->
+            <RowDefinition Height="*"/>      <!-- 内容主区：内容少就贴内容，多了封顶再滚 -->
+            <RowDefinition Height="Auto"/>   <!-- 底部常驻生成条 -->
+        </Grid.RowDefinitions>
+
+        <!-- ============ 标题 ============ -->
+        <Grid Grid.Row="0" Margin="18,14,18,10">
+            <StackPanel>
+                <TextBlock Text="视口图层工具" FontSize="13.5" FontWeight="SemiBold"/>
+                <TextBlock Text="图框 × 视口状态 → 批量生成图纸" Style="{StaticResource Dim}" Margin="0,2,0,0"/>
+            </StackPanel>
+            <Button x:Name="BtnSettings" HorizontalAlignment="Right" VerticalAlignment="Center"
+                    Style="{StaticResource IconButton}" Click="OnToggleSettings"
+                    ToolTip="打开设置窗口（视口配置在这里导出导入）">
+                <!-- 与主面板标题栏同一枚「滑杆」图标：齿轮画不准，读起来也容易被当成主题切换 -->
+                <Grid Width="14" Height="14">
+                    <Path Data="M1.6 4.4 H12.4 M1.6 9.6 H12.4"
+                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                          StrokeThickness="1.3" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                    <Ellipse Width="4" Height="4" Fill="{StaticResource Yb.BgDeep}"
+                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                             StrokeThickness="1.3"
+                             HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2.2,2.4,0,0"/>
+                    <Ellipse Width="4" Height="4" Fill="{StaticResource Yb.BgDeep}"
+                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                             StrokeThickness="1.3"
+                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2.2,2.4"/>
+                </Grid>
+            </Button>
+        </Grid>
+
+        <!-- ============ 任务 Tab：两条并列任务线，不再是 1→4 步 ============ -->
+        <Border Grid.Row="1" BorderBrush="{StaticResource Yb.Line}" BorderThickness="0,0,0,1" Padding="18,0,18,0">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="TabGen" Style="{StaticResource TabRadio}" GroupName="VpTab"
+                             Content="批量生成" Checked="OnTabChanged"/>
+                <RadioButton x:Name="TabTag" Style="{StaticResource TabRadio}" GroupName="VpTab"
+                             Content="视口标记" Checked="OnTabChanged"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ============ 内容主区：三个面板互斥显示 ============ -->
+        <Grid Grid.Row="2" Margin="18,12,18,12">
+
+            <!-- ===== 设置页（⚙）已经搬走了 =====
+                 图框维护在「批量生成」页一级；图层兜底和视口配置的导出/导入
+                 统一收到主设置窗口的「视口工具」页（2026-11-14）。
+                 面板只留每天要点的操作，设一次就不动的东西不在这儿。 -->
+
+            <!-- ===== 生成页：全部高频动作都在这一屏 ===== -->
+            <Grid x:Name="PageGen">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- 图框选择器 + 拾取 -->
+                    <RowDefinition Height="Auto"/>  <!-- 图框详情 + 维护动作 -->
+                    <RowDefinition Height="Auto"/>  <!-- 异常提示：平时不占位 -->
+                    <RowDefinition Height="Auto"/>  <!-- 状态标题 + 中频动作 -->
+                    <RowDefinition Height="*"/>     <!-- 状态列表 / 空状态：窗口封顶后由它让位 -->
+                    <RowDefinition Height="Auto"/>  <!-- 行内工具 -->
+                </Grid.RowDefinitions>
+
+                <!-- 图框：选 + 拾取。减负之后「拾取」就是这条线唯一的入口动作，
+                     所以从 ⚙ 提到一级 —— 以前要点两次才够得着，太深了。 -->
+                <Grid Grid.Row="0" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="图框" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="1" x:Name="CmbFrames" Style="{StaticResource DarkCombo}"
+                              SelectionChanged="OnFrameSelected"/>
+                    <Button Grid.Column="2" Content="拾取图框" Style="{StaticResource GhostSmall}"
+                            Margin="8,0,0,0" Click="OnSaveFrame"
+                            ToolTip="从当前图纸点一个块，或框选整组图框线（VLFRAME）"/>
+                </Grid>
+
+                <!-- 图框详情 + 维护：一行放下，没有图框时整行灰掉 -->
+                <Grid Grid.Row="1" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" x:Name="FrameLine" Style="{StaticResource Meta}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"
+                               TextTrimming="CharacterEllipsis"/>
+
+                    <StackPanel Grid.Column="1" x:Name="RowFrameTools" Orientation="Horizontal">
+                        <Button Content="重框内框" Style="{StaticResource TextButton}" Click="OnReframeInner"
+                                ToolTip="自动识别不准时手动框一次内框（VLINNER）"/>
+                        <Button Content="改名" Style="{StaticResource TextButton}" Click="OnFrameRename"/>
+                        <Button Content="删除" Style="{StaticResource TextButton}" Click="OnFrameDelete"
+                                ToolTip="只删配置里的图框，图纸里的图框不受影响"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 只有真出问题时才出现：没图框 / 图框文件不在了 -->
+                <TextBlock Grid.Row="2" x:Name="FrameWarn" Style="{StaticResource WarnText}"
+                           Visibility="Collapsed" Margin="0,0,0,8"/>
+
+                <!-- 状态标题 + 状态集切换 + 中频动作（对齐配置只在没对上时才有意义，所以降为文字按钮） -->
+                <Grid Grid.Row="3" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="状态集" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center" Margin="0,0,6,0"/>
+
+                    <!-- 一个公司 / 项目一套状态，切这里就换一整套（同名状态互不干扰）。
+                         下拉末尾挂三个动作项，省得再摆一排按钮。 -->
+                    <ComboBox Grid.Column="1" x:Name="CmbGroup" Style="{StaticResource DarkCombo}"
+                              Width="120" SelectionChanged="OnGroupChanged"
+                              ToolTip="切换状态集：不同公司 / 项目各一套，互不干扰"/>
+
+                    <TextBlock Grid.Column="2" x:Name="StateHint" Style="{StaticResource Meta}"
+                               Margin="8,0,8,0" VerticalAlignment="Center"
+                               TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                        <Button Content="对齐配置" Style="{StaticResource TextButton}"
+                                Click="OnAlign" ToolTip="在面板里给每个状态挑归层配置"/>
+                        <Button x:Name="BtnCapture" Content="+ 刷取状态" Style="{StaticResource GhostSmall}"
+                                Click="OnCapture" Margin="6,0,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 列表 + 空状态 -->
+                <Grid Grid.Row="4">
+                    <ListBox x:Name="LstStates" SelectionMode="Single" MinHeight="112"
+                             MouseDoubleClick="OnItemDoubleClick">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Index}"
+                                               Foreground="{StaticResource Yb.TextFaint}" FontSize="10.5"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,10,0"
+                                                VerticalAlignment="Center">
+                                        <Ellipse Width="7" Height="7" Margin="0,0,5,0"
+                                                 Fill="{Binding BindColor}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding BindText}" FontSize="10.5"
+                                                   Foreground="{Binding BindColor}" VerticalAlignment="Center"
+                                                   MaxWidth="132" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="3" Text="{Binding CountText}" FontSize="10.5"
+                                               Foreground="{StaticResource Yb.TextFaint}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- 空状态：只替换列表区，标题行与工具行仍在原位 -->
+                    <Grid x:Name="EmptyState" Background="{StaticResource Yb.Sunken}"
+                          Visibility="Collapsed">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                    Margin="0,10,0,10">
+                            <Border Width="24" Height="24" CornerRadius="2"
+                                    Background="{StaticResource Yb.EmptyArtFill}"
+                                    BorderBrush="{StaticResource Yb.EmptyArt}" BorderThickness="1.4"
+                                    HorizontalAlignment="Center">
+                                <Path Data="M2,7 L22,7 M5,12 L16,12 M5,16 L12,16"
+                                      Stroke="{StaticResource Yb.EmptyArt}" StrokeThickness="1.4"
+                                      Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="这个状态集还是空的" FontSize="12"
+                                       Foreground="{StaticResource Yb.TextDim}"
+                                       HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                            <TextBlock Text="先在图纸里调好一个视口的冻结层，再点「刷取状态」把它记下来"
+                                       FontSize="11.5" Foreground="{StaticResource Yb.TextFaint}"
+                                       TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                            <Button Content="刷取状态" Style="{StaticResource GhostButton}"
+                                    Click="OnCapture" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <!-- 行内工具：中频就近放，低频降级成文字按钮；空列表时整行禁用 -->
+                <Grid Grid.Row="5" Margin="0,10,0,0">
+                    <StackPanel x:Name="RowTools" Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button Style="{StaticResource IconButton}" Click="OnMoveUp" ToolTip="上移">
+                            <Path Width="14" Height="14" Stretch="Uniform" Data="M7,11 L7,3 M4,6 L7,3 L10,6"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                  StrokeThickness="1.4"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Button>
+                        <Button Style="{StaticResource IconButton}" Click="OnMoveDown" ToolTip="下移">
+                            <Path Width="14" Height="14" Stretch="Uniform" Data="M7,3 L7,11 M4,8 L7,11 L10,8"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                  StrokeThickness="1.4"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Button>
+                        <Button Content="改名" Style="{StaticResource TextButton}" Click="OnRename"/>
+                        <Button Content="看冻结层" Style="{StaticResource TextButton}" Click="OnShowLayers"/>
+                        <Button Content="更新" Style="{StaticResource TextButton}" Click="OnUpdate"
+                                ToolTip="点一个视口，用它的冻结层覆盖这个状态"/>
+                        <Button Content="删除" Style="{StaticResource TextButton}" Click="OnDelete"/>
+                    </StackPanel>
+                    <Button x:Name="BtnApply" HorizontalAlignment="Right"
+                            Style="{StaticResource GhostSmall}" Click="OnApply"
+                            ToolTip="选中状态后点这里，再在图纸里点目标视口">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="14" Height="14" Stretch="Uniform" Data="M2,7 L11,7 M8,4 L11,7 L8,10"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                                  StrokeThickness="1.4"
+                                  StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Margin="0,0,6,0"/>
+                            <TextBlock Text="刷到视口"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Grid>
+
+            <!-- ===== 标记页：另一条任务线，本页只有一个主操作 ===== -->
+            <Grid x:Name="PageTag" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- 说明 -->
+                    <RowDefinition Height="Auto"/>  <!-- 当前视口状态 -->
+                    <RowDefinition Height="Auto"/>  <!-- 配置 + 标记 / 取消标记 -->
+                    <RowDefinition Height="Auto"/>  <!-- 已标记列表标题 -->
+                    <RowDefinition Height="*"/>     <!-- 已标记列表 -->
+                    <RowDefinition Height="Auto"/>  <!-- 图层兜底（视口行为，留在这条线里） -->
+                </Grid.RowDefinitions>
+
+                <!-- 原来这里有个「自动切换」开关：它是整条任务线的总闸，关掉等于标记白标，
+                     却要用户先理解"标记 → 进视口切配置"这层机制才敢动它。
+                     现在改成常开，用一句话把它在做什么说清楚。 -->
+                <TextBlock Grid.Row="0" Margin="0,0,0,10"
+                           Text="给外来图纸的视口绑一套归层配置：进这个视口自动切过去，退出自动恢复。"
+                           Style="{StaticResource Dim}" TextWrapping="Wrap"/>
+
+                <Border Grid.Row="1" Style="{StaticResource SettingBox}" Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="TagDot" Width="7" Height="7" Margin="0,0,8,0"
+                                 VerticalAlignment="Center" Fill="{StaticResource Yb.TextFaint}"/>
+                        <TextBlock x:Name="TagText" Style="{StaticResource Dim}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="2" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="配置" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox Grid.Column="1" x:Name="CmbTagProfile" Style="{StaticResource DarkCombo}"
+                              Margin="0,0,6,0" ToolTip="标记视口时用哪套归层配置"/>
+                    <Button Grid.Column="2" Content="标记视口" Style="{StaticResource PrimaryButton}"
+                            Click="OnTag" Margin="0,0,6,0" ToolTip="点选或框选视口，一次可以标多个"/>
+                    <Button Grid.Column="3" Content="取消标记" Style="{StaticResource GhostSmall}"
+                            Click="OnUntag" ToolTip="同样支持点选或框选多个"/>
+                </Grid>
+
+                <Grid Grid.Row="3" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="已标记视口" Style="{StaticResource Caption}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" x:Name="TagCountHint" Style="{StaticResource Meta}"
+                               Margin="8,0,8,0" VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="配置改名" Style="{StaticResource TextButton}"
+                            Click="OnRenameProfile"
+                            ToolTip="改主插件里这套配置的名字；状态里的绑定会一起跟着改"/>
+                </Grid>
+
+                <Grid Grid.Row="4">
+                    <ListBox x:Name="LstTags" SelectionMode="Single" MinHeight="84">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="40"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12"
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Profile}" FontSize="10.5"
+                                               Foreground="{StaticResource Yb.TextDim}" Margin="8,0,0,0"
+                                               MaxWidth="120" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding CurrentText}" FontSize="10.5"
+                                               Foreground="{StaticResource Yb.AccentLine}" Margin="10,0,0,0"
+                                               VerticalAlignment="Center" TextAlignment="Right"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid x:Name="TagEmpty" Background="{StaticResource Yb.Sunken}" Visibility="Collapsed">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,10,0,10">
+                            <Border Width="24" Height="24" CornerRadius="2"
+                                    Background="{StaticResource Yb.EmptyArtFill}"
+                                    BorderBrush="{StaticResource Yb.EmptyArt}" BorderThickness="1.4"
+                                    HorizontalAlignment="Center">
+                                <Path Data="M6,8.5 L18,8.5 L18,15.5 L6,15.5 Z"
+                                      Stroke="{StaticResource Yb.EmptyArt}" StrokeThickness="1.4"
+                                      Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="本图还没有标记过的视口" FontSize="12"
+                                       Foreground="{StaticResource Yb.TextDim}" HorizontalAlignment="Center"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="选好配置后点「标记视口」，再在图纸里点视口"
+                                       FontSize="11.5" Foreground="{StaticResource Yb.TextFaint}"
+                                       TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+
+                <!-- 图层兜底：这是「视口 → 配置」这条线上的行为，跟标记同一件事，
+                     所以跟标记放同一页底部。设一次不用动，压在列表下面不占主视线。 -->
+                <Border Grid.Row="5" BorderBrush="{StaticResource Yb.Line}" BorderThickness="0,1,0,0"
+                        Padding="0,10,0,0" Margin="0,10,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="图层兜底" FontSize="11.5"
+                                       Foreground="{StaticResource Yb.Text}"/>
+                            <TextBlock Text="没标记的视口，按冻结层集合去猜用哪套配置"
+                                       Style="{StaticResource Meta}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <ToggleButton Grid.Column="1" x:Name="BtnLayerFallback"
+                                      Style="{StaticResource SwitchToggle}"
+                                      VerticalAlignment="Center"
+                                      Click="OnToggleLayerFallback"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- ============ 底部常驻生成条：总高 44，终点动作永远在这一屏 ============ -->
+        <Border x:Name="OpBar" Grid.Row="3"
+                BorderBrush="{StaticResource Yb.Line}" BorderThickness="0,1,0,0"
+                Background="{StaticResource Yb.Surface}" Padding="18,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="比例" Style="{StaticResource Dim}"
+                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBox Grid.Column="1" x:Name="TxtScale" Width="52" Margin="0,0,10,0"
+                         TextAlignment="Center" VerticalContentAlignment="Center"
+                         LostFocus="OnScaleChanged" KeyDown="OnScaleKeyDown"
+                         ToolTip="填「自动」按内框算；也可填 50 表示 1:50"/>
+                <TextBlock Grid.Column="2" Text="方式" Style="{StaticResource Dim}"
+                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <ComboBox Grid.Column="3" x:Name="CmbMode" Style="{StaticResource DarkCombo}"
+                          MinWidth="168" SelectionChanged="OnModeChanged"/>
+                <Button Grid.Column="5" x:Name="BtnBatch" Content="框选并生成"
+                        Style="{StaticResource PrimaryButton}" Click="OnBatch"/>
+            </Grid>
+        </Border>
+
+        <!-- ============ 对齐配置：面板内浮层 ============
+             原来这里只是个「对齐配置」文字按钮，点了往命令行塞 _.VLALIGN，
+             然后在命令行里一条条敲 B 绑定 / R 改名。用户 2026-11-16 反馈
+             「还是要命令行」，改成面板内直接改：一行一个状态，右边下拉挑配置，
+             需要的话点「同名」把状态名也改成它，点保存一次性落盘。
+             盖住 Tab 以下三行，等于把工作区临时换成这张表，取消即原样退出。 -->
+        <Grid x:Name="AlignOverlay" Grid.Row="1" Grid.RowSpan="3" Visibility="Collapsed"
+              Background="{StaticResource Yb.BgDeep}">
+            <Grid Margin="18,12,18,14">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>  <!-- 标题 + 一键同名 + 统计 -->
+                    <RowDefinition Height="Auto"/>  <!-- 说明 -->
+                    <RowDefinition Height="Auto"/>  <!-- 表头 -->
+                    <RowDefinition Height="*"/>     <!-- 行 -->
+                    <RowDefinition Height="Auto"/>  <!-- 底部 -->
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="对齐配置" FontSize="13.5" FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                HorizontalAlignment="Left" Margin="10,0,0,0">
+                        <Button Content="一键同名" Style="{StaticResource TextButton}"
+                                Click="OnAlignSameName"
+                                ToolTip="状态名和配置名完全一样的，直接绑上"/>
+                        <Button Content="按建议预选" Style="{StaticResource TextButton}"
+                                Margin="2,0,0,0" Click="OnAlignSuggest"
+                                ToolTip="名字接近（黄点）的按建议填上，填完还能逐行改"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" x:Name="AlignStat" Style="{StaticResource Meta}"
+                               VerticalAlignment="Center"/>
+                </Grid>
+
+                <TextBlock Grid.Row="1" x:Name="AlignHint" Style="{StaticResource Dim}"
+                           Margin="0,0,0,10"
+                           Text="给每个视口状态指一套归层配置。对上之后，进这个视口才会自动切过去。"/>
+
+                <Grid Grid.Row="2" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="15"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="152"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="1" Text="视口状态" Style="{StaticResource Caption}"/>
+                    <TextBlock Grid.Column="2" Text="绑定到" Style="{StaticResource Caption}"/>
+                    <TextBlock Grid.Column="3" Text="名字跟谁" Style="{StaticResource Caption}"
+                               Margin="8,0,0,0"/>
+                </Grid>
+
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              x:Name="ScrollAlign" ScrollChanged="OnAlignScroll">
+                    <ItemsControl x:Name="LstAlign" Margin="0,0,6,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="15"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="152"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Ellipse Grid.Column="0" Width="7" Height="7" Fill="{Binding DotFill}"
+                                             HorizontalAlignment="Left" VerticalAlignment="Center"/>
+
+                                    <Grid Grid.Column="1" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding NameText}" FontSize="12"
+                                                   Foreground="{Binding NameBrush}" MaxWidth="190"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding RenameHint}" FontSize="10.5"
+                                                   Foreground="{StaticResource Yb.TextFaint}"
+                                                   VerticalAlignment="Center" Margin="6,0,0,0"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+
+                                    <!-- 假下拉：点开的是同一窗口里的选择层，不是 Popup -->
+                                    <Button Grid.Column="2" Style="{StaticResource ComboLike}"
+                                            Content="{Binding Selected}" Tag="{Binding}"
+                                            Click="OnOpenPicker"
+                                            ToolTip="这个状态对应哪套归层配置；选「不绑定」就不切"/>
+
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="8,0,0,0">
+                                        <Button Content="跟配置" Style="{StaticResource MiniToggle}"
+                                                Background="{Binding StateBtnBg}"
+                                                Tag="{Binding}" Click="OnAlignRenameState"
+                                                IsEnabled="{Binding CanRenameState}"
+                                                ToolTip="把状态名改成所选配置名 —— 保存时生效，图纸里的视口不受影响"/>
+                                        <Button Content="跟状态" Style="{StaticResource MiniToggle}"
+                                                Background="{Binding ProfileBtnBg}"
+                                                Tag="{Binding}" Click="OnAlignRenameProfile"
+                                                IsEnabled="{Binding CanRenameProfile}"
+                                                ToolTip="把所选归层配置改成这个状态名 —— 所有引用它的状态和视口标记一起改"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <Grid Grid.Row="4" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Style="{StaticResource Meta}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"
+                               Text="只改插件里的配置，图纸里已经打好的标记不受影响。"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="取消" Style="{StaticResource GhostButton}"
+                                Margin="0,0,8,0" Click="OnAlignCancel"/>
+                        <Button Content="保存" Style="{StaticResource PrimaryButton}"
+                                MinWidth="76" Click="OnAlignSave"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- ===== 选择层：替代 ComboBox 的 Popup =====
+                 盖在浮层最上面，位置由代码按被点的那个按钮算。
+                 点空白处关掉；列表一滚动也关掉，免得浮在那儿对不上行。 -->
+            <Grid x:Name="AlignPicker" Visibility="Collapsed" Background="Transparent"
+                  MouseLeftButtonDown="OnPickerOutside">
+                <Border x:Name="PickerBox" HorizontalAlignment="Left" VerticalAlignment="Top"
+                        Width="230" Padding="0,4"
+                        Background="{StaticResource Yb.Raised}"
+                        BorderBrush="{StaticResource Yb.LineStrong}" BorderThickness="1"
+                        CornerRadius="8">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="210">
+                        <ItemsControl x:Name="LstPicker">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding}" Style="{StaticResource PickerItem}"
+                                            Click="OnPickerPick"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

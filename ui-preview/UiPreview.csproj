@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    仅用于「不启动 AutoCAD 也能看一眼 UI」的离屏渲染工程。
+    直接把 src/UI 下真实的 XAML 拉进来编译，配一层桩代码（无 CAD 依赖），
+    渲染成 PNG 用来核对排版 / 配色 / 间距。
+
+    ⚠ 不参与出货，不引用 AutoCAD 程序集，产物只落在本目录 bin 下。
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <LangVersion>10.0</LangVersion>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <RootNamespace>UiPreview</RootNamespace>
+    <AssemblyName>UiPreview</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="..\源码\UI\UiTheme.cs" Link="Shared\UiTheme.cs" />
+    <Page Include="..\源码\UI\QuickSwitch\LayerSelectionWindow.xaml"
+          Link="UI\QuickSwitch\LayerSelectionWindow.xaml" />
+    <Page Include="..\源码\UI\PanelWindow.xaml"
+          Link="UI\PanelWindow.xaml" />
+    <Page Include="..\源码\UI\SettingsWindow.xaml"
+          Link="UI\SettingsWindow.xaml" />
+    <!-- V2.1 界面重构（方案 B）离屏核对：与真实 XAML 同一份，桩代码不引 AutoCAD -->
+    <Page Include="..\源码\ViewportTool\Ui\VpPanel.xaml"
+          Link="Viewport\Ui\VpPanel.xaml" />
+    <!-- 帮助页收款码，与主工程同一份图 -->
+    <Resource Include="..\源码\UI\donate.png" Link="UI\donate.png" />
+  </ItemGroup>
+</Project>

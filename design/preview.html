@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>Y_图层工具箱 V1.0 · 视觉稿</title>
+<style>
+/* =========================================================================
+   Y_图层工具箱 V1.0 · 单文件视觉稿
+   -------------------------------------------------------------------------
+   组织方式：
+   1) :root  —— token 表（严格对应 01-visual-spec §2）
+   2) 页面 chrome —— 只允许一个规范外色值 --page-bg（画布底，比 BgDeep 更暗，
+      目的是让 artboard 浮出来）。artboard 内部一律不出现规范外色值。
+   3) 组件层 —— 全部走 --yb-* 变量；hover/pressed/focus 用真实伪类实现，
+      另外提供 .fx-hover / .fx-pressed / .fx-focus 三个"定格态"类，
+      让评审在一屏内同时看到状态全集。
+   4) 旧值区（.old）—— 唯一允许出现旧 VS 灰的地方（01 §9-19 豁免区）。
+   单位：1 DIP = 1 CSS px。
+   ========================================================================= */
+
+:root{
+  /* ---- 2.1 底色 ---- */
+  --yb-bg-deep:#141519;          /* #FF141519 */
+  --yb-surface:#202128;          /* #FF202128 */
+  --yb-raised:#26282F;           /* #FF26282F */
+  --yb-sunken:#1A1B20;           /* #FF1A1B20 */
+  /* ---- 2.2 线（WPF 写法 #AARRGGBB → CSS 写法 #RRGGBBAA） ---- */
+  --yb-line:#FFFFFF1F;           /* #1FFFFFFF  W12 */
+  --yb-line-strong:#FFFFFF33;    /* #33FFFFFF  W20 */
+  --yb-line-hover:#FFFFFF80;     /* #80FFFFFF  W50（hover 必须比 normal 亮） */
+  --yb-line-control:#FFFFFF66;   /* #66FFFFFF  W40 · 控件静止边界 3.60:1 */
+  /* ---- 2.3 文字 ---- */
+  --yb-text:#F1F5F9;
+  --yb-text-dim:#98A0AC;
+  --yb-text-faint:#8A93A0;      /* 4.60–5.89:1 全底色过 AA */
+  --yb-text-disabled:#565A62;
+  --yb-text-on-accent:#FFFFFF;
+  --yb-selection-text:#FFFFFF;   /* 选中名称提亮：三重编码第三重 */
+  --yb-swatch-line:#FFFFFF4D;    /* 图层色块 1px 描边（ACI 7 纯白/浅灰在深底要边界） */
+  /* ---- 2.4 强调 ---- */
+  --yb-accent:#2563EB;
+  --yb-accent-hi:#3B82F6;
+  --yb-accent-lo:#1D4ED8;
+  --yb-accent-line:#60A5FA;
+  --yb-accent-soft:#1E2A44;
+  --yb-accent-ink:#DBEAFE;
+  /* ---- 2.5 语义 ---- */
+  --yb-ok:#34D399;
+  --yb-warn:#F59E0B;
+  --yb-danger:#F87171;
+  --yb-danger-solid:#DC2626;
+  --yb-danger-solid-lo:#B91C1C;
+  --yb-danger-soft:#2A1A1C;
+  --yb-danger-line:#4D3A3C;
+  /* ---- 2.6 状态叠加 ---- */
+  --yb-hover:#FFFFFF14;          /* #14FFFFFF */
+  --yb-hover-row:#FFFFFF0F;      /* #0FFFFFFF */
+  --yb-pressed:#FFFFFF0A;        /* #0AFFFFFF */
+  --yb-selection-bg:#1E2A44;
+  --yb-selection-mark:#60A5FA;
+  --yb-focus-ring:#60A5FA;
+  --yb-focus-halo:#60A5FA40;     /* #4060A5FA */
+  /* ---- 2.7 控件 ---- */
+  --yb-track:#2E313A;
+  --yb-switch-track:#3A3D45;
+  --yb-switch-knob:#F1F5F9;
+  --yb-scroll-thumb:#FFFFFF4D;
+  --yb-scroll-thumb-hover:#FFFFFF66;
+  /* ---- 2.8 空状态 ---- */
+  --yb-empty-art:#2E313A;
+  --yb-empty-art-fill:#1A1B20;
+  /* ---- 3.x 字体 ---- */
+  --yb-font:"Segoe UI","Microsoft YaHei UI",sans-serif;
+
+  /* 胶囊/圆盘的半透明底（WPF #F2202128 / #F226282F） */
+  --yb-surface-glass:#202128F2;
+  --yb-raised-glass:#26282FF2;
+
+  /* ---- 页面画布：唯一规范外色值（仅在 artboard 之外使用） ---- */
+  --page-bg:#0A0B0D;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--page-bg);
+  color:var(--yb-text);
+  font-family:var(--yb-font);
+  font-size:12px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font-family:inherit}
+svg{display:block}
+ul,ol{margin:0;padding:0;list-style:none}
+p{margin:0}
+
+/* ============================ 页面 chrome ============================ */
+.page{max-width:1240px;margin:0 auto;padding:52px 40px 96px}
+
+.hd{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;
+    padding-bottom:24px;border-bottom:1px solid var(--yb-line)}
+.hd h1{margin:0;font-size:20px;font-weight:600;line-height:26px;letter-spacing:0}
+.hd h1 .ver{font-size:11.5px;font-weight:400;color:var(--yb-text-faint);margin-left:8px}
+.hd .sub{margin-top:6px;font-size:13.5px;color:var(--yb-text-dim)}
+.hd-r{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.hd-r .meta{font-size:10.5px;color:var(--yb-text-faint)}
+.hd-r code{font-family:inherit;color:var(--yb-text-dim)}
+
+.decisions{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:22px}
+.decisions li{
+  border:1px solid var(--yb-line);background:var(--yb-bg-deep);
+  padding:10px 12px 12px;font-size:11.5px;color:var(--yb-text-dim);line-height:16px;
+}
+.decisions li b{
+  display:block;font-size:8.5px;font-weight:600;color:var(--yb-text-faint);
+  letter-spacing:0;margin-bottom:6px;
+}
+
+/* ============================ 区块壳 ============================ */
+.sec{margin-top:60px}
+.sec-hd{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.sec-hd h2{margin:0;font-size:13.5px;font-weight:600;color:var(--yb-text)}
+.sec-hd .n{font-size:8.5px;color:var(--yb-text-faint);font-weight:600}
+.sec-hd .dim{font-size:11.5px;color:var(--yb-text-faint)}
+.sec-desc{margin:0 0 20px;font-size:11.5px;color:var(--yb-text-dim);line-height:16px;max-width:860px}
+
+.cap{display:flex;align-items:baseline;gap:8px;margin:0 0 8px;font-size:10.5px;color:var(--yb-text-faint)}
+.cap b{font-size:11.5px;font-weight:600;color:var(--yb-text-dim)}
+.cap .sz{font-size:10.5px;color:var(--yb-text-faint)}
+
+.row{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:18px}
+
+/* artboard：背景 BgDeep + 1px Line 边框 + 无圆角 */
+.ab{
+  background:var(--yb-bg-deep);
+  border:1px solid var(--yb-line);
+  border-radius:0;
+  overflow:hidden;
+  position:relative;
+}
+.ab.free{overflow:visible}
+.ab.pad{padding:16px}
+
+.hint{font-size:11.5px;color:var(--yb-text-faint);line-height:16px}
+.hint.warn{color:var(--yb-warn)}
+.hint.warn::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--yb-warn);margin-right:6px;vertical-align:1px}
+
+/* ============================ 插件表面基类 ============================ */
+.yb{font-family:var(--yb-font);font-size:12px;line-height:18px;color:var(--yb-text)}
+.yb *{box-sizing:border-box}
+
+/* 7px 状态点 */
+.dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;display:inline-block}
+.dot.ok{background:var(--yb-ok)}
+.dot.warn{background:var(--yb-warn)}
+.dot.off{background:var(--yb-text-faint)}
+.dot.nav{background:var(--yb-accent-line)}
+
+/* ---------------- 标题栏 48 ---------------- */
+.tbar{
+  height:48px;flex:0 0 48px;background:var(--yb-surface);
+  border-bottom:1px solid var(--yb-line);
+  display:flex;align-items:stretch;
+}
+.tbar.c32{height:32px;flex:0 0 32px}
+.tbar.c32 .tbar-main{padding-left:14px;gap:6px}
+.tbar.c32 .tbar-title{font-size:13px}
+.tbar.c32 .cbtn{height:32px;width:32px;flex:0 0 32px}
+.tbar > .stripe{width:3px;flex:0 0 3px}
+.stripe.s-ok{background:var(--yb-ok)}
+.stripe.s-off{background:var(--yb-text-faint)}
+.stripe.s-warn{background:var(--yb-warn)}
+.stripe.s-nav{background:var(--yb-accent-line)}
+.tbar-main{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:0 0 0 15px}
+.tbar-title{font-size:13.5px;font-weight:600;line-height:20px;color:var(--yb-text);white-space:nowrap}
+.tbar-sub{font-size:11.5px;color:var(--yb-text-faint);white-space:nowrap}
+.spacer{flex:1 1 auto}
+
+/* 设置窗口：V1.0 真实控件 —— 分段单选 / 滑杆 / 快捷键录制框（禁止用下拉或开关替代） */
+.seg{display:inline-flex;height:30px;border-radius:6px;border:1px solid var(--yb-line-control);overflow:hidden;background:var(--yb-raised)}
+.seg .it{display:inline-flex;align-items:center;padding:0 10px;font-size:11.5px;color:var(--yb-text-dim);
+  border-right:1px solid var(--yb-line-strong);white-space:nowrap}
+.seg .it:last-child{border-right:0}
+.seg .it.on{background:var(--yb-accent-soft);color:var(--yb-accent-ink);box-shadow:inset 0 -2px 0 var(--yb-accent-line)}
+.keybox{height:30px;min-width:164px;border-radius:6px;background:var(--yb-raised);
+  border:1px solid var(--yb-line-control);display:inline-flex;align-items:center;justify-content:space-between;
+  padding:0 9px;font-size:11.5px;color:var(--yb-text)}
+.keybox .rec{font-size:10.5px;color:var(--yb-text-faint)}
+.sld{height:30px;display:flex;align-items:center;gap:10px}
+.sld .track{width:150px;height:4px;border-radius:2px;background:var(--yb-track);position:relative}
+.sld .track::before{content:"";position:absolute;left:0;top:0;width:56%;height:4px;border-radius:2px;background:var(--yb-accent)}
+.sld .track i{position:absolute;left:calc(56% - 7px);top:-5px;width:14px;height:14px;border-radius:50%;
+  background:var(--yb-accent);border:1px solid var(--yb-accent-line)}
+.sld .val{font-size:11.5px;color:var(--yb-text);min-width:48px}
+
+/* 09 · 防呆与漏画状态盘点 */
+.fk-band{margin-top:18px}
+.fk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fk-card{background:var(--yb-raised);border:1px solid var(--yb-line-strong);border-radius:8px;padding:12px;min-width:0}
+.fk-card h4{margin:0 0 9px;font-size:12px;font-weight:600;color:var(--yb-text);display:flex;align-items:center;gap:8px}
+.fk-card .tagx{font-size:8.5px;font-weight:600;padding:1px 5px;border-radius:4px;
+  border:1px solid var(--yb-line-control);color:var(--yb-text-dim)}
+.fk-mini{background:var(--yb-bg-deep);border:1px solid var(--yb-line);border-radius:6px;padding:10px 11px;
+  font-size:11.5px;line-height:18px;color:var(--yb-text-dim);min-height:74px}
+.fk-mini .hi{color:var(--yb-text)}
+.fk-mini .warn{color:var(--yb-warn)}
+.fk-mini .danger{color:var(--yb-danger)}
+.fk-mini .ok{color:var(--yb-ok)}
+.fk-mini .hr{height:1px;background:var(--yb-line);margin:7px 0}
+.fk-mini .btnline{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.fk-mini .btnline span{border:1px solid var(--yb-line-control);border-radius:6px;padding:2px 10px;font-size:11px;color:var(--yb-text)}
+.fk-mini .btnline span.pri{background:var(--yb-accent);border-color:var(--yb-accent);color:var(--yb-text-on-accent)}
+.fk-cap{margin:8px 0 0;font-size:10.5px;line-height:15px;color:var(--yb-text-dim)}
+.fk-cap b{color:var(--yb-text);font-weight:600}
+
+.fk-tb{width:100%;border-collapse:collapse;font-size:11.5px;color:var(--yb-text-dim)}
+.fk-tb th{text-align:left;font-size:10.5px;font-weight:600;color:var(--yb-text-faint);
+  padding:8px 10px;border-bottom:1px solid var(--yb-line-strong)}
+.fk-tb td{padding:9px 10px;border-bottom:1px solid var(--yb-line);vertical-align:top;line-height:17px}
+.fk-tb td:first-child{color:var(--yb-text);width:26%}
+.fk-tb td:nth-child(2){width:15%;white-space:nowrap}
+.fk-tb .yes{color:var(--yb-ok)}
+.fk-tb .no{color:var(--yb-warn)}
+.fk-band-hd{font-size:12px;font-weight:600;color:var(--yb-text);margin:0 0 4px}
+.fk-band-desc{font-size:10.5px;color:var(--yb-text-dim);margin:0 0 10px}
+
+/* ---------------- 图标按钮 26 ---------------- */
+.ibtn{
+  width:26px;height:26px;border-radius:4px;flex:0 0 auto;
+  display:grid;place-items:center;color:var(--yb-text-dim);
+}
+.ibtn:hover,.ibtn.fx-hover{background:var(--yb-hover);color:var(--yb-text)}
+.ibtn:active,.ibtn.fx-pressed{background:var(--yb-pressed)}
+.ibtn.sel{background:var(--yb-accent-soft);color:var(--yb-accent-line)}
+.ibtn:focus-visible{outline:1px solid var(--yb-focus-ring);outline-offset:0}
+.ibtn.dis,.ibtn:disabled{opacity:.28;cursor:default;background:none;color:var(--yb-text-dim)}
+/* 图标按钮 20（输入框内嵌） */
+.ibtn.s20{width:20px;height:20px;border-radius:4px}
+/* 配置区：4 个并列图标（V1.0 结构），删除常显 Danger 色，不靠 hover 才发现它是删 */
+.ibtn.danger{color:var(--yb-danger)}
+.ibtn.danger:hover,.ibtn.danger.fx-hover{
+  background:var(--yb-danger-soft);box-shadow:inset 0 0 0 1px var(--yb-danger-line);color:var(--yb-danger)}
+/* 配置区：删除前的 1px × 14 分隔线。与相邻图标的净空 = margin 4 + 图标间距 2 = 6（sp-3），
+   占位 13 宽；v1.4 把原来的 margin 3（净空 5，不在间距阶上）收口到 6。 */
+.sep-v{width:1px;height:14px;background:var(--yb-line-strong);margin:0 4px;flex:0 0 auto}
+
+/* ---------------- 关闭按钮 32×48 ---------------- */
+.cbtn{width:32px;height:48px;flex:0 0 32px;display:grid;place-items:center;color:var(--yb-text-dim);border-radius:0}
+.cbtn:hover,.cbtn.fx-hover{background:var(--yb-hover);color:var(--yb-text)}
+.cbtn:active{background:var(--yb-pressed)}
+
+/* ---------------- 危险图标按钮 ---------------- */
+.ibtn-danger{width:26px;height:26px;border-radius:4px;display:grid;place-items:center;color:var(--yb-text-dim)}
+.ibtn-danger:hover,.ibtn-danger.fx-hover{
+  background:var(--yb-danger-soft);box-shadow:inset 0 0 0 1px var(--yb-danger-line);color:var(--yb-danger)}
+.ibtn-danger:active{background:var(--yb-danger-soft);color:var(--yb-danger)}
+
+/* ---------------- 按钮 ---------------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-size:12px;border-radius:6px;white-space:nowrap}
+.btn-primary{
+  height:32px;min-width:88px;padding:0 20px;
+  background:var(--yb-accent);border:1px solid var(--yb-accent);
+  color:var(--yb-text-on-accent);font-weight:600;
+}
+.btn-primary:hover,.btn-primary.fx-hover{background:var(--yb-accent-hi);border-color:var(--yb-accent-line)}
+.btn-primary:active,.btn-primary.fx-pressed{background:var(--yb-accent-lo);border-color:var(--yb-accent-lo)}
+.btn-primary:focus-visible{outline:1px solid var(--yb-focus-halo);outline-offset:1px}
+.btn-primary.tall{height:34px}
+.btn-primary:disabled,.btn-primary.dis{opacity:.32;cursor:default}
+.btn-ghost{
+  height:32px;padding:0 16px;border:1px solid var(--yb-line-control);
+  color:var(--yb-text-dim);font-weight:400;background:none;
+}
+.btn-ghost:hover,.btn-ghost.fx-hover{background:var(--yb-hover);border-color:var(--yb-line-hover);color:var(--yb-text)}
+.btn-ghost:active,.btn-ghost.fx-pressed{background:var(--yb-pressed)}
+.btn-ghost:disabled{opacity:.32;cursor:default}
+/* 危险主按钮（仅确认框） */
+.btn-danger{
+  height:32px;padding:0 18px;border-radius:6px;border:1px solid var(--yb-danger-line);
+  color:var(--yb-danger);font-size:12px;display:inline-flex;align-items:center;
+}
+.btn-danger:hover,.btn-danger.fx-hover{background:var(--yb-danger-solid);border-color:var(--yb-danger);color:var(--yb-text-on-accent)}
+.btn-danger:active,.btn-danger.fx-pressed{background:var(--yb-danger-solid-lo);border-color:var(--yb-danger-solid-lo);color:var(--yb-text-on-accent)}
+
+/* ---------------- 输入框 / 下拉 ---------------- */
+.field{height:30px;border-radius:6px;background:var(--yb-raised);
+  border:1px solid var(--yb-line-control);display:flex;align-items:center;
+  font-size:11.5px;color:var(--yb-text);padding:0 9px;min-width:0}
+.field:hover,.field.fx-hover{border-color:var(--yb-line-hover)}
+.field:focus-within,.field.fx-focus{border-color:var(--yb-focus-ring)}
+.field.dis{background:var(--yb-sunken);border-color:var(--yb-line);color:var(--yb-text-disabled)}
+.field.err{border-color:var(--yb-danger)}
+.err-txt{font-size:10.5px;line-height:14px;color:var(--yb-danger);max-width:200px}
+.field .ph{color:var(--yb-text-dim)}
+.field input{
+  flex:1;min-width:0;height:100%;border:0;background:none;outline:none;
+  font-size:11.5px;color:var(--yb-text);padding:0;
+}
+.field input::placeholder{color:var(--yb-text-dim);opacity:1}
+.field .clr{width:20px;height:20px;border-radius:4px;display:grid;place-items:center;
+  color:var(--yb-text-faint);margin-right:-5px}
+.field .clr:hover{background:var(--yb-hover);color:var(--yb-text)}
+
+.select{height:30px;border-radius:6px;background:var(--yb-raised);
+  border:1px solid var(--yb-line-control);display:flex;align-items:center;
+  padding:0 3px 0 9px;font-size:12px;color:var(--yb-text);justify-content:space-between;gap:6px}
+.select:hover,.select.fx-hover{border-color:var(--yb-line-hover)}
+.select:hover .arw,.select.fx-hover .arw{color:var(--yb-text)}
+.select.fx-focus{border-color:var(--yb-focus-ring)}
+.select .val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.select .arw{width:24px;height:100%;display:grid;place-items:center;color:var(--yb-text-dim);flex:0 0 auto}
+
+/* 下拉弹层 */
+.pop{background:var(--yb-raised);border:1px solid var(--yb-line-strong);border-radius:8px;padding:4px 0}
+.pop .item{height:28px;border-radius:4px;margin:1px 4px;padding:0 9px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:12px;color:var(--yb-text);cursor:pointer}
+.pop .item:hover,.pop .item.fx-hover{background:var(--yb-hover)}
+.pop .item.sel{background:var(--yb-accent-soft);color:var(--yb-accent-ink)}
+.pop .item .ck{color:var(--yb-accent-line);opacity:0}
+.pop .item.sel .ck{opacity:1}
+
+/* ---------------- 开关 40×22 ---------------- */
+.sw{width:40px;height:22px;border-radius:11px;flex:0 0 auto;position:relative;
+  background:var(--yb-switch-track);border:1px solid var(--yb-line);cursor:pointer;
+  display:inline-block;vertical-align:middle}
+.sw i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--yb-switch-knob);display:block}
+.sw.on{background:var(--yb-accent);border-color:var(--yb-accent-line)}
+.sw.on i{left:20px}
+.sw:hover,.sw.fx-hover{border-color:var(--yb-line-control)}
+.sw:hover i,.sw.fx-hover i{background:var(--yb-text-on-accent)}
+.sw:focus-visible{outline:1px solid var(--yb-focus-halo);outline-offset:1px}
+.sw.dis{opacity:.32;cursor:default}
+.sw-lbl{font-size:11.5px;color:var(--yb-text-dim)}
+
+/* ---------------- chip 22 ---------------- */
+.chip{height:22px;border-radius:4px;background:var(--yb-raised);border:1px solid transparent;
+  padding:0 8px;display:inline-flex;align-items:center;gap:4px;
+  font-size:11.5px;color:var(--yb-text-dim);cursor:pointer;flex:0 0 auto}
+.chip:hover,.chip.fx-hover{box-shadow:inset 0 0 0 100px var(--yb-hover);color:var(--yb-text)}
+.chip.sel{background:var(--yb-accent-soft);border-color:var(--yb-accent-line);color:var(--yb-accent-ink)}
+.chip.sel:hover,.chip.sel.fx-hover{box-shadow:inset 0 0 0 100px var(--yb-hover);border-color:var(--yb-accent-hi)}
+.chip .n{font-size:8.5px;color:var(--yb-text-faint)}
+.chip.sel .n{color:var(--yb-accent-ink)}
+.chip-bar{background:var(--yb-sunken);padding:6px;display:flex;flex-wrap:wrap;gap:4px}
+
+/* 行内图层 chip（含色块 + 名称 + ACI + 删除） */
+.lchip{height:22px;border-radius:4px;background:var(--yb-raised);
+  display:inline-flex;align-items:center;gap:6px;padding:0 5px 0 7px;
+  font-size:11.5px;color:var(--yb-text);flex:0 0 auto;max-width:190px}
+.lchip:hover{box-shadow:inset 0 0 0 100px var(--yb-hover)}
+.lchip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lchip .aci{font-size:8.5px;color:var(--yb-text-faint);flex:0 0 auto}
+.lchip .x{width:14px;height:14px;display:grid;place-items:center;color:var(--yb-text-faint);flex:0 0 auto}
+.lchip .x:hover{color:var(--yb-danger)}
+/* 当前层（下一条命令会用它）：唯一的"选中"语义，跟 CC 列表同色语 */
+.lchip.on{background:var(--yb-accent-soft);box-shadow:inset 0 0 0 1px var(--yb-line-control);
+  color:var(--yb-selection-text)}
+.lchip.on .aci{color:var(--yb-text-dim)}
+.lchip.on .x{color:var(--yb-text-dim)}
+/* 未设置 chip：虚线框 */
+.lchip.none{ /* 注意：不能叫 .empty —— 会撞上「空状态」的 .empty */background:none;border:1px dashed var(--yb-line-strong);color:var(--yb-text-faint)}
+
+/* 8×8 / 12×12 色块 */
+.c8{width:8px;height:8px;border-radius:2px;flex:0 0 auto;background-clip:padding-box;
+  box-shadow:inset 0 0 0 1px var(--yb-swatch-line)}
+.c12{width:12px;height:12px;border-radius:2px;flex:0 0 auto;background-clip:padding-box;
+  box-shadow:inset 0 0 0 1px var(--yb-swatch-line)}
+
+/* ---------------- 分组标题 ---------------- */
+.grp{height:24px;display:flex;align-items:center;gap:6px;padding:0 12px;
+  font-size:10.5px;font-weight:600;line-height:14px;color:var(--yb-text-dim);
+  border-top:1px solid var(--yb-line);margin-top:14px}
+.grp .n{font-weight:400;color:var(--yb-text-faint)}
+
+/* 列表统计小字 22：不是行、不可聚焦、不占整行高（替代分组标题行） */
+.liststat{height:22px;display:flex;align-items:center;font-size:10.5px;
+  color:var(--yb-text-dim);padding:0 12px 0 0;cursor:default}
+
+/* ---------------- 列表行 28 / 紧凑行 26 / 下限 24 ---------------- */
+.list{background:var(--yb-sunken)}
+.row28{
+  height:28px;display:flex;align-items:center;gap:8px;padding:0 12px;
+  font-size:12px;color:var(--yb-text);cursor:pointer;position:relative;
+  border-bottom:1px solid var(--yb-line);
+}
+.row28:last-child{border-bottom:0}
+.row28:hover{background:var(--yb-hover-row)}
+.row28.sel{background:var(--yb-selection-bg)}
+.row28.sel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;
+  background:var(--yb-selection-mark)}
+.row28.sel:hover{background:var(--yb-selection-bg)}
+.row28.sel .nm{color:var(--yb-selection-text)}
+.row28.dis{color:var(--yb-text-disabled);cursor:default}
+.row28.dis:hover{background:none}
+.row28 .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row28 .st{font-size:10.5px;color:var(--yb-text-faint);flex:0 0 auto;display:flex;align-items:center;gap:4px}
+.row28 .right{margin-left:auto}
+
+/* ---------------- 复选方块 14 ---------------- */
+.cbx{width:14px;height:14px;border-radius:4px;border:1px solid var(--yb-line-control);
+  flex:0 0 auto;position:relative;cursor:pointer;display:inline-block;vertical-align:middle}
+.cbx:hover{border-color:var(--yb-line-control)}
+.cbx.checked{background:var(--yb-accent);border-color:var(--yb-accent)}
+.cbx.checked::after{
+  content:"";position:absolute;left:4px;top:1px;width:4px;height:7px;
+  border:solid var(--yb-text-on-accent);border-width:0 1.5px 1.5px 0;transform:rotate(38deg)}
+.cbx.indet{background:var(--yb-accent-soft);border-color:var(--yb-accent-line)}
+.cbx.indet::after{content:"";position:absolute;left:2px;top:5px;width:8px;height:1.5px;background:var(--yb-accent-line)}
+.cbx.dis{border-color:var(--yb-line);cursor:default}
+.cbx.dis.checked{opacity:.32}
+.cbx-lbl{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;color:var(--yb-text);cursor:pointer;min-height:24px}
+
+/* ---------------- 滚动条 ---------------- */
+.sbar{width:12px;height:120px;position:relative;background:none;flex:0 0 12px}
+.sbar i{position:absolute;left:2px;width:8px;border-radius:6px;background:var(--yb-scroll-thumb);display:block}
+.sbar:hover i,.sbar.fx-hover i{background:var(--yb-scroll-thumb-hover)}
+
+/* ---------------- tooltip ---------------- */
+.tip{background:var(--yb-raised);border:1px solid var(--yb-line-strong);border-radius:4px;
+  padding:4px 8px;font-size:11.5px;line-height:16px;color:var(--yb-text);max-width:280px}
+
+/* ---------------- 模式条 26 ---------------- */
+.modebar{height:26px;border-radius:6px;background:var(--yb-raised);
+  border:1px solid var(--yb-line-strong);display:flex;align-items:center;gap:8px;
+  padding:0 9px;font-size:11.5px;color:var(--yb-text)}
+.modebar .act{margin-left:auto;color:var(--yb-accent-line);display:inline-flex;align-items:center;gap:4px;font-size:11.5px}
+.modebar.warn{border-color:var(--yb-warn);color:var(--yb-warn)}
+
+/* ---------------- 分组分隔线 ---------------- */
+.hr{height:1px;background:var(--yb-line);border:0;margin:0}
+
+/* ---------------- 内容区 / 底部操作区 ---------------- */
+.body-pad{padding:14px 18px 0}
+.foot{display:flex;align-items:center;gap:10px;padding:14px 18px}
+.foot .st{font-size:11.5px;color:var(--yb-text-dim);display:inline-flex;align-items:center;gap:6px}
+.foot .st.warn{color:var(--yb-warn)}
+.foot .st .d6{width:6px;height:6px;border-radius:50%;background:var(--yb-warn);display:inline-block}
+.foot .btns{margin-left:auto;display:flex;gap:8px}
+
+/* ---------------- 空状态 ---------------- */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:28px 18px;transform:translateY(-8px)}
+.empty .t{margin-top:10px;font-size:12px;color:var(--yb-text-dim)}
+.empty .d{margin-top:6px;font-size:11.5px;line-height:16px;color:var(--yb-text-faint);max-width:260px}
+.empty .a{margin-top:14px}
+
+/* ============================ token 色卡 ============================ */
+.tkgrp{margin-top:22px}
+.tkgrp h3{margin:0 0 8px;font-size:10.5px;font-weight:600;color:var(--yb-text-dim);
+  padding-bottom:8px;border-bottom:1px solid var(--yb-line)}
+.tkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(156px,1fr));gap:8px}
+.tk{background:var(--yb-bg-deep);border:1px solid var(--yb-line);padding:8px;display:flex;gap:8px;align-items:center}
+.tk i{width:30px;height:30px;border-radius:4px;background:var(--c);flex:0 0 30px;
+  box-shadow:inset 0 0 0 1px var(--yb-line-strong)}
+.tk .m{min-width:0;line-height:1.3}
+.tk .m b{display:block;font-size:11.5px;font-weight:400;color:var(--yb-text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tk .m code{font-family:inherit;font-size:10.5px;color:var(--yb-text-faint)}
+
+/* ============================ 组件库 ============================ */
+.lib{background:var(--yb-bg-deep);border:1px solid var(--yb-line);padding:8px 16px 16px}
+.lib-row{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--yb-line)}
+.lib-row:last-child{border-bottom:0}
+.lib-lbl{width:78px;flex:0 0 78px;font-size:10.5px;font-weight:600;color:var(--yb-text-dim);line-height:14px;padding-top:4px}
+.lib-items{flex:1;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:flex-start}
+.spec{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.spec > .lbl{font-size:8.5px;color:var(--yb-text-faint)}
+.spec.fill{flex:1;min-width:200px}
+.spec.fill > .field,.spec.fill > .select{width:100%}
+
+/* ============================ 图层切换 · 改造前（旧 VS 灰） ============================
+   唯一允许出现旧值的地方。旧值只在 .o-vars 里定义一次，.old（画面前）与
+   .diffs（旧→新标注表）共用同一组变量，全文件不出现第二份旧色字面量。
+   ----------------------------------------------------------------------------------- */
+.o-vars{
+  --o-winbg:#1E1E1E;      /* 旧 WindowBg / ListBg */
+  --o-bar:#2D2D30;        /* 旧 TitleBarBg / ControlBg / CategoryNormalBg */
+  --o-catbar:#252526;     /* 旧 CategoryBarBg */
+  --o-border:#3F3F46;     /* 旧 BorderBrushKey */
+  --o-sel:#0078D4;        /* 旧 CategorySelectedBg / HighlightBackground */
+  --o-itemsel:#094771;    /* 旧 ItemSelectedBg */
+  --o-head:#1B3A5C;       /* 旧 HeaderBg */
+  --o-text:#E0E0E0;       /* 旧 TextFg / CategoryNormalFg */
+  --o-sub:#888888;        /* 旧 SubTextFg */
+  --o-status:#9A9A9A;     /* 旧 StatusFg */
+  --o-title:#CCCCCC;      /* 旧 TitleBarFg */
+  --o-close:#C42B1C;      /* 旧关闭按钮 hover */
+  --o-closep:#A02010;     /* 旧关闭按钮 pressed */
+  --o-hifg:#C8C8C8;       /* 旧 HighlightForeground */
+}
+.old{
+  font-family:"Microsoft YaHei","微软雅黑",sans-serif;font-size:13px;
+  background:var(--o-winbg);
+  color:var(--o-text);
+  display:flex;flex-direction:column;
+}
+.old .obar{height:40px;background:var(--o-bar);display:flex;align-items:center;
+  padding:0 6px 0 12px;gap:0}
+.old .obar .t{flex:1;font-size:13px;font-weight:600;color:var(--o-title)}
+.old .obtn{width:32px;height:28px;display:grid;place-items:center;color:var(--o-title);
+  font-size:14px;line-height:1;border-radius:0}
+.old .obtn:hover{background:#00000022}
+.old .oclose{width:32px;height:28px;display:grid;place-items:center;color:var(--o-title);
+  font-size:14px;font-weight:700;line-height:1;border-radius:0}
+.old .oclose:hover{background:var(--o-close);color:#FFFFFF}
+.old .oclose:active{background:var(--o-closep);color:#FFFFFF}
+.old .omain{flex:1;min-height:0;display:flex;flex-direction:column;margin:8px;gap:6px}
+.old .osearch{height:30px;background:var(--o-bar);border:1px solid var(--o-border);
+  display:flex;align-items:center;padding:0 6px 0 6px;font-size:13px;color:var(--o-sub);border-radius:0}
+.old .osearch span{flex:1}
+.old .osearch .x{width:24px;height:24px;display:grid;place-items:center;color:var(--o-sub);font-size:12px}
+.old .ocat{background:var(--o-catbar);padding:4px;display:flex;flex-wrap:wrap;gap:4px}
+.old .ocat b{font-weight:400;font-size:12px;background:var(--o-bar);color:var(--o-text);
+  padding:4px 10px;margin:2px;line-height:16px}
+.old .ocat b.sel{background:var(--o-sel);color:#FFFFFF}
+.old .olist{flex:1;min-height:0;background:var(--o-winbg);overflow:hidden}
+.old .ohead{background:var(--o-head);color:#FFFFFF;font-weight:700;font-size:13px;
+  padding:6px 10px;margin:6px 0 2px}
+.old .orow{padding:5px 6px;margin:1px;display:flex;align-items:center;gap:0;
+  font-size:13px;color:var(--o-text)}
+.old .orow:hover{background:#2A2D2E}
+.old .orow.sel{background:var(--o-itemsel)}
+.old .orow.hl{background:var(--o-sel);color:var(--o-hifg)}
+.old .orow .sq{width:12px;height:12px;border-radius:2px;flex:0 0 12px}
+.old .orow .nm{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-left:8px}
+.old .orow .st{font-size:13px;color:var(--o-status)}
+.old .ofoot{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--o-text);padding:0 0 2px 2px}
+.old .wcbx{width:13px;height:13px;background:#FFFFFF;border:1px solid #707070;position:relative;flex:0 0 13px}
+.old .wcbx::after{content:"";position:absolute;left:3px;top:0;width:4px;height:7px;
+  border:solid var(--o-winbg);border-width:0 1.5px 1.5px 0;transform:rotate(40deg)}
+
+/* 旧→新 标注表 */
+.diffs{margin-top:24px;border:1px solid var(--yb-line);background:var(--yb-bg-deep)}
+.diffs .dh{display:grid;grid-template-columns:210px 96px 210px 1fr;gap:12px;
+  padding:8px 14px;border-bottom:1px solid var(--yb-line);
+  font-size:10.5px;font-weight:600;color:var(--yb-text-dim)}
+.diffs .dr{display:grid;grid-template-columns:210px 96px 210px 1fr;gap:12px;
+  padding:9px 14px;border-bottom:1px solid var(--yb-line);align-items:center;font-size:11.5px}
+.diffs .dr:last-child{border-bottom:0}
+.diffs .old-v{display:flex;align-items:center;gap:8px;color:var(--yb-text-dim)}
+.diffs .old-v i{width:14px;height:14px;border-radius:2px;flex:0 0 14px}
+.diffs .new-v{display:flex;align-items:center;gap:8px;color:var(--yb-text)}
+.diffs .new-v i{width:14px;height:14px;border-radius:2px;flex:0 0 14px;
+  box-shadow:inset 0 0 0 1px var(--yb-line-strong)}
+.diffs .arw{display:flex;align-items:center;gap:6px;color:var(--yb-text-faint);font-size:10.5px}
+.diffs .arw .ln{flex:1;height:1px;background:var(--yb-line)}
+.diffs .why{font-size:11.5px;color:var(--yb-text-faint);line-height:16px}
+
+/* ============================ 主面板 / 对话框专用 ============================ */
+/* ---------------- 映射行：图层池模型（回到 V1.0 结构，v1.4） ----------------
+   一条行 = 类别 | 池单元格 | 状态。池单元格三种形态：
+   0 层 = 「＋ 选图层」｜1 层 = 1 个 chip + 「＋ 再加一层」
+   ≥2 层 = 摘要 chip「N 层 · 当前层」+ 行尾 ＋；点摘要 = **行内**展开成 chips（换行、行高变高）
+   禁止 +N 折叠浮层 / 横向滚动 / hover 才出现的 ＋（见 01 规范 §6.8 已作废项）。
+   ------------------------------------------------------------------------- */
+.tbl-hd{height:24px;display:grid;grid-template-columns:76px 1fr 64px;align-items:center;gap:8px;padding:0 0 0 2px;
+  font-size:10.5px;color:var(--yb-text-dim);border-bottom:1px solid var(--yb-line);margin-bottom:2px}
+.prow{display:grid;grid-template-columns:76px 1fr 64px;align-items:center;gap:2px 8px;
+  padding:2px 0 2px 2px;border-bottom:1px solid var(--yb-line);font-size:11.5px;color:var(--yb-text)}
+.prow:last-child{border-bottom:0}
+.prow:hover{background:var(--yb-hover-row)}
+.prow .cat{font-size:11.5px;color:var(--yb-text);line-height:26px}
+/* 第 1 段：可编辑下拉（V1.0 就是 editable ComboBox，手打分号那条路不能删） */
+.pool-edit{height:26px;font-size:11.5px;padding-left:8px}
+.pool-edit .val{font-size:11.5px}
+/* 第 2 段：摘要 / 入口，跨到状态列下方（与 V1.0 的 head 同宽） */
+.pool-line{grid-column:2 / span 2;display:flex;align-items:center;gap:6px;
+  margin-top:2px;align-self:start;min-width:0}
+/* 加图层入口：常驻可见，不靠 hover 才出现（hover 才出现的入口 = 等于没有） */
+.prow .add{width:22px;height:22px;padding:0;line-height:0;border-radius:4px;display:grid;place-items:center;flex:0 0 auto;
+  color:var(--yb-text-dim);border:1px dashed var(--yb-line-control);cursor:pointer;background:none}
+.prow .add:hover{background:var(--yb-hover);color:var(--yb-text);border-style:solid}
+/* 到顶（16 层）：入口置灰，不隐藏——隐藏会让人以为"这一类只能有一层" */
+.prow .add.dis{opacity:.28;cursor:default;background:none;border-style:dashed}
+.prow .add.dis:hover{background:none;color:var(--yb-text-dim);border-style:dashed}
+/* 空池 / 1 层：文字版入口，比裸 ＋ 更能说清"点了会发生什么" */
+.prow .addlbl{height:22px;padding:0 8px 0 6px;border-radius:4px;flex:0 0 auto;background:none;
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--yb-text-dim);
+  border:1px dashed var(--yb-line-control);cursor:pointer}
+.prow .addlbl:hover{background:var(--yb-hover);color:var(--yb-text);border-style:solid}
+.prow .st{font-size:10.5px;color:var(--yb-text-dim);text-align:right;white-space:nowrap}
+.prow .st.warn{color:var(--yb-warn)}
+.prow .st.faint{color:var(--yb-text-faint)}
+
+/* 收起态的池摘要：▸ N 层 · 当前层名（数字 TextDim、当前层 AccentLine，与 V1.0 同一读数） */
+.psum{height:22px;padding:0 8px 0 3px;border-radius:4px;display:inline-flex;align-items:center;
+  border:1px solid transparent;background:none;cursor:pointer;flex:0 0 auto;max-width:100%}
+.psum:hover,.psum.fx-hover{background:var(--yb-hover)}
+.psum .arw{width:13px;flex:0 0 13px;display:grid;place-items:center;font-size:10.5px;
+  color:var(--yb-text-dim);line-height:1}
+.psum .cnt{font-size:10.5px;color:var(--yb-text-dim);white-space:nowrap}
+.psum .dotsep{font-size:10.5px;color:var(--yb-text-faint);margin:0 4px}
+.psum .cur{font-size:10.5px;color:var(--yb-accent-line);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:168px}
+/* 展开后的 chips：WrapPanel 等价物 —— 必须换行、不许横向滚动 */
+.pool-chips{grid-column:2 / span 2;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;
+  align-self:start;min-width:0}
+/* 示意用：行内展开的高度标注 */
+.hmark{font-size:8.5px;color:var(--yb-text-faint);white-space:nowrap}
+
+/* 卡片 / 对话框壳：窗口内部零投影（01 §5.1），靠 1px LineStrong 分界 */
+.card{
+  border-radius:8px;background:var(--yb-bg-deep);border:1px solid var(--yb-line-strong);
+  display:flex;flex-direction:column;
+}
+.card .cbtn-s{width:26px;height:26px;border-radius:4px;display:grid;place-items:center;color:var(--yb-text-dim);flex:0 0 auto}
+.card .cbtn-s:hover{background:var(--yb-hover);color:var(--yb-text)}
+
+/* 设置窗口字段行 */
+.frow{display:flex;align-items:center;gap:10px;min-height:30px}
+.frow > .k{width:76px;flex:0 0 76px;font-size:11.5px;color:var(--yb-text-dim)}
+.frow + .frow{margin-top:10px}
+.fdesc{margin-top:6px;font-size:11.5px;line-height:16px;color:var(--yb-text-faint);padding-left:86px}
+.sghd{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:600;
+  line-height:14px;color:var(--yb-text-dim);margin:14px 0 10px;padding-top:14px;
+  border-top:1px solid var(--yb-line)}
+.sghd.first{margin-top:0;padding-top:0;border-top:0}
+
+/* ============================ 胶囊条 ============================ */
+.cap29{
+  height:29px;border-radius:15px;background:var(--yb-surface-glass);
+  border:1px solid var(--yb-line-strong);
+  display:inline-flex;align-items:center;padding:0 11px;gap:0;
+  box-shadow:0 2px 10px #00000073;
+  font-size:11.5px;color:var(--yb-text);
+}
+.cap29.off{background:var(--yb-raised-glass);border-color:#FFFFFF40}
+.cap29 .t{font-weight:600;white-space:nowrap}
+.cap29 .sep{width:1px;height:13px;background:var(--yb-line);margin:0 2px;flex:0 0 1px}
+.cap29 .pchip{height:22px;border-radius:4px;padding:0 5px;display:inline-flex;align-items:center;
+  font-size:11.5px;color:var(--yb-text);cursor:pointer;white-space:nowrap}
+.cap29 .pchip:hover{background:var(--yb-hover)}
+.cap29 .layer{font-size:11.5px;color:var(--yb-text);white-space:nowrap;padding:0 7px 0 5px}
+.cap29 .layer.dim{color:var(--yb-text-dim)}
+.cap29 .warn-tag{font-size:10.5px;color:var(--yb-warn);white-space:nowrap;padding-right:7px}
+.cap29 .ib20{width:20px;height:20px;border-radius:4px;display:grid;place-items:center;
+  color:var(--yb-text-dim);flex:0 0 auto;margin-left:5px}
+.cap29 .ib20:hover{background:var(--yb-hover);color:var(--yb-text)}
+.cap29.off .t{color:var(--yb-text-dim);font-weight:400}
+
+/* ============================ 圆盘 ============================ */
+.pie{width:264px;height:264px;overflow:visible}
+.pie .sec{fill:var(--yb-surface);stroke:var(--yb-bg-deep);stroke-width:0.8;stroke-linejoin:round}
+.pie .sec.hot{fill:var(--yb-accent-soft);stroke:var(--yb-accent-line);stroke-width:1.3;
+  filter:drop-shadow(0 0 8px var(--yb-accent-line))}
+.pie .lbl{font-family:var(--yb-font);font-size:12px;font-weight:600;fill:var(--yb-text);
+  text-anchor:middle;dominant-baseline:middle}
+.pie .lbl.hot{fill:var(--yb-accent-ink)}
+.pie .aci{font-family:var(--yb-font);font-size:8.5px;font-weight:400;fill:var(--yb-text-dim);
+  text-anchor:middle;dominant-baseline:middle}
+.pie .aci.hot{fill:var(--yb-accent-ink)}
+.pie .hubring{fill:var(--yb-surface);stroke:var(--yb-line-strong);stroke-width:1}
+.pie .hub1{font-family:var(--yb-font);font-size:8.5px;fill:var(--yb-text-faint);text-anchor:middle;dominant-baseline:middle}
+.pie .hub2{font-family:var(--yb-font);font-size:13.5px;font-weight:600;fill:var(--yb-text);text-anchor:middle;dominant-baseline:middle}
+.pie .hub3{font-family:var(--yb-font);font-size:8.5px;fill:var(--yb-text-faint);text-anchor:middle;dominant-baseline:middle}
+
+/* ============================ 红线 / 验收 ============================ */
+.rl{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:stretch}
+.rl-box{border:1px solid var(--yb-line);background:var(--yb-bg-deep);padding:16px 18px 18px}
+.rl-box h3{margin:0 0 12px;font-size:11.5px;font-weight:600;color:var(--yb-text);
+  display:flex;align-items:center;gap:8px}
+.rl-box h3 .tag{font-size:8.5px;font-weight:600;color:var(--yb-text-faint);
+  border:1px solid var(--yb-line-strong);border-radius:4px;padding:1px 5px}
+.rl li{display:flex;gap:10px;font-size:11.5px;line-height:16px;color:var(--yb-text-dim);padding:6px 0;
+  border-bottom:1px solid var(--yb-line)}
+.rl li:last-child{border-bottom:0}
+.rl li .idx{flex:0 0 20px;font-size:8.5px;color:var(--yb-text-faint);padding-top:2px}
+.rl li b{color:var(--yb-text);font-weight:400}
+.rl li .ok{flex:0 0 auto;width:14px;height:14px;border-radius:4px;background:var(--yb-accent);
+  position:relative;margin-top:2px}
+.rl li .ok::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:7px;
+  border:solid var(--yb-text-on-accent);border-width:0 1.5px 1.5px 0;transform:rotate(38deg)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="hd">
+    <div>
+      <h1>Y_图层工具箱 <span class="ver">V1.0</span></h1>
+      <p class="sub">以圆盘与胶囊条为基准的界面语言统一</p>
+    </div>
+    <div class="hd-r">
+      <span class="meta">依据 <code>01-visual-spec.md</code> · <code>02-ux-spec.md</code></span>
+      <span class="meta">静态高保真视觉稿 · 零外部依赖 · 请以 1280px+ 宽度浏览</span>
+    </div>
+  </header>
+
+  <ul class="decisions">
+    <li><b>决策 1</b>实心蓝只属主操作：主按钮 / 开关 on / 复选框选中。选中态一律 AccentSoft 底。</li>
+    <li><b>决策 2</b>选中行用 2px 左缘标记，不描边：与标题栏 3px 状态条同一套语言。</li>
+    <li><b>决策 3</b>字号收到 6 档：8.5 / 10.5 / 11.5 / 12 / 13.5 / 20。</li>
+    <li><b>决策 4</b>圆角 4-6-8-15 四档：chip 4、控件 6、卡片 8、胶囊 15。</li>
+    <li><b>决策 5</b>语义色只表达状态：Ok / Warn / Danger 不做装饰、不做分组配色。</li>
+  </ul>
+
+  <!-- ============================ 01 · TOKEN 色卡 ============================ -->
+  <section class="sec" id="tokens">
+    <div class="sec-hd"><span class="n">01</span><h2>Token 色卡</h2><span class="dim">8 组 · 40 个 token · 值与 01 规范 §2 完全一致</span></div>
+    <p class="sec-desc">
+      色块底色统一铺在 <code>BgDeep</code> 上，与真实窗口内的观感一致。半透明 token 标注的是 WPF 写法
+      <code>#AARRGGBB</code>，CSS 里换算为 <code>#RRGGBBAA</code>（同值不同序）。表外色值一律视为缺陷。
+    </p>
+
+    <div class="tkgrp">
+      <h3>2.1 底色 · 四层靠底色差分层，零渐变</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#141519"><i></i><div class="m"><b>BgDeep</b><code>#FF141519</code></div></div>
+        <div class="tk" style="--c:#202128"><i></i><div class="m"><b>Surface</b><code>#FF202128</code></div></div>
+        <div class="tk" style="--c:#26282F"><i></i><div class="m"><b>Raised</b><code>#FF26282F</code></div></div>
+        <div class="tk" style="--c:#1A1B20"><i></i><div class="m"><b>Sunken</b><code>#FF1A1B20</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.2 线 · 白 12 / 20 / 30 / 40 四档</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#FFFFFF1F"><i></i><div class="m"><b>Line</b><code>#1FFFFFFF</code></div></div>
+        <div class="tk" style="--c:#FFFFFF33"><i></i><div class="m"><b>LineStrong</b><code>#33FFFFFF</code></div></div>
+        <div class="tk" style="--c:#FFFFFF4D"><i></i><div class="m"><b>LineHover</b><code>#4DFFFFFF</code></div></div>
+        <div class="tk" style="--c:#FFFFFF66"><i></i><div class="m"><b>LineControl</b><code>#FF66FFFFFF · 3.60:1 ✅</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.3 文字 · 五级，对 BgDeep 对比度见规范 §2.10</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#F1F5F9"><i></i><div class="m"><b>Text</b><code>#FFF1F5F9 · 16.8:1</code></div></div>
+        <div class="tk" style="--c:#98A0AC"><i></i><div class="m"><b>TextDim</b><code>#FF98A0AC · 6.87:1</code></div></div>
+        <div class="tk" style="--c:#8A93A0"><i></i><div class="m"><b>TextFaint</b><code>#FF8A93A0 · 5.89:1 ✅</code></div></div>
+        <div class="tk" style="--c:#565A62"><i></i><div class="m"><b>TextDisabled</b><code>#FF565A62</code></div></div>
+        <div class="tk" style="--c:#FFFFFF"><i></i><div class="m"><b>TextOnAccent</b><code>#FFFFFFFF</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.4 强调 · 全场只有一个彩色强调</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#2563EB"><i></i><div class="m"><b>Accent</b><code>#FF2563EB</code></div></div>
+        <div class="tk" style="--c:#3B82F6"><i></i><div class="m"><b>AccentHi</b><code>#FF3B82F6</code></div></div>
+        <div class="tk" style="--c:#1D4ED8"><i></i><div class="m"><b>AccentLo</b><code>#FF1D4ED8</code></div></div>
+        <div class="tk" style="--c:#60A5FA"><i></i><div class="m"><b>AccentLine</b><code>#FF60A5FA</code></div></div>
+        <div class="tk" style="--c:#1E2A44"><i></i><div class="m"><b>AccentSoft</b><code>#FF1E2A44</code></div></div>
+        <div class="tk" style="--c:#DBEAFE"><i></i><div class="m"><b>AccentInk</b><code>#FFDBEAFE</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.5 语义 · 只表达状态，不做装饰</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#34D399"><i></i><div class="m"><b>Ok</b><code>#FF34D399</code></div></div>
+        <div class="tk" style="--c:#F59E0B"><i></i><div class="m"><b>Warn</b><code>#FFF59E0B</code></div></div>
+        <div class="tk" style="--c:#F87171"><i></i><div class="m"><b>Danger</b><code>#FFF87171</code></div></div>
+        <div class="tk" style="--c:#DC2626"><i></i><div class="m"><b>DangerSolid</b><code>#FFDC2626</code></div></div>
+        <div class="tk" style="--c:#B91C1C"><i></i><div class="m"><b>DangerSolidLo</b><code>#FFB91C1C</code></div></div>
+        <div class="tk" style="--c:#2A1A1C"><i></i><div class="m"><b>DangerSoft</b><code>#FF2A1A1C</code></div></div>
+        <div class="tk" style="--c:#4D3A3C"><i></i><div class="m"><b>DangerLine</b><code>#FF4D3A3C</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.6 状态叠加 · 半透明白阶梯（只允许 7 档）</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#FFFFFF14"><i></i><div class="m"><b>Hover</b><code>#14FFFFFF</code></div></div>
+        <div class="tk" style="--c:#FFFFFF0F"><i></i><div class="m"><b>HoverRow</b><code>#0FFFFFFF</code></div></div>
+        <div class="tk" style="--c:#FFFFFF0A"><i></i><div class="m"><b>Pressed</b><code>#0AFFFFFF</code></div></div>
+        <div class="tk" style="--c:#1E2A44"><i></i><div class="m"><b>SelectionBg</b><code>#FF1E2A44</code></div></div>
+        <div class="tk" style="--c:#60A5FA"><i></i><div class="m"><b>SelectionMark</b><code>#FF60A5FA</code></div></div>
+        <div class="tk" style="--c:#60A5FA"><i></i><div class="m"><b>FocusRing</b><code>#FF60A5FA</code></div></div>
+        <div class="tk" style="--c:#60A5FA40"><i></i><div class="m"><b>FocusHalo</b><code>#4060A5FA</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.7 控件专用</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#2E313A"><i></i><div class="m"><b>Track</b><code>#FF2E313A</code></div></div>
+        <div class="tk" style="--c:#3A3D45"><i></i><div class="m"><b>SwitchTrack</b><code>#FF3A3D45</code></div></div>
+        <div class="tk" style="--c:#F1F5F9"><i></i><div class="m"><b>SwitchKnob</b><code>#FFF1F5F9</code></div></div>
+        <div class="tk" style="--c:#FFFFFF4D"><i></i><div class="m"><b>ScrollThumb</b><code>#4DFFFFFF</code></div></div>
+        <div class="tk" style="--c:#FFFFFF66"><i></i><div class="m"><b>ScrollThumbHover</b><code>#66FFFFFF</code></div></div>
+      </div>
+    </div>
+
+    <div class="tkgrp">
+      <h3>2.8 空状态 · 线稿色（= Track / Sunken，不新增色号）</h3>
+      <div class="tkgrid">
+        <div class="tk" style="--c:#2E313A"><i></i><div class="m"><b>EmptyArt</b><code>#FF2E313A</code></div></div>
+        <div class="tk" style="--c:#1A1B20"><i></i><div class="m"><b>EmptyArtFill</b><code>#FF1A1B20</code></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 02 · 组件库 ============================ -->
+  <section class="sec" id="components">
+    <div class="sec-hd"><span class="n">02</span><h2>组件库</h2><span class="dim">状态全集：normal / hover / pressed / selected / focus / disabled</span></div>
+    <p class="sec-desc">
+      每一项都是真控件：鼠标移上去会有真实反馈。标注为「悬停 / 按下 / 聚焦」的格子用的是定格态类
+      （<code>.fx-hover</code> / <code>.fx-pressed</code> / <code>.fx-focus</code>），这样一屏能看到全部状态而不必逐个去试。
+    </p>
+
+    <div class="lib">
+      <!-- 按钮 -->
+      <div class="lib-row">
+        <div class="lib-lbl">按钮</div>
+        <div class="lib-items">
+          <div class="spec"><button class="btn btn-primary">确定</button><span class="lbl">主按钮 · 32 · 每窗最多 1 个</span></div>
+          <div class="spec"><button class="btn btn-primary fx-hover">确定</button><span class="lbl">主按钮 · 悬停 AccentHi</span></div>
+          <div class="spec"><button class="btn btn-primary fx-pressed">确定</button><span class="lbl">主按钮 · 按下 AccentLo</span></div>
+          <div class="spec"><button class="btn btn-primary tall">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 8.4 6.2 11.4 12.8 4.6"/></svg>
+            保存并关闭</button><span class="lbl">主按钮 · 独占底部 34 + 图标 16/1.5</span></div>
+          <div class="spec"><button class="btn btn-primary" disabled>确定</button><span class="lbl">主按钮 · 禁用 0.32</span></div>
+          <div class="spec"><button class="btn btn-ghost">取消</button><span class="lbl">次按钮 · 32</span></div>
+          <div class="spec"><button class="btn btn-ghost fx-hover">取消</button><span class="lbl">次按钮 · 悬停</span></div>
+          <div class="spec"><button class="btn btn-ghost" disabled>取消</button><span class="lbl">次按钮 · 禁用 0.32</span></div>
+          <div class="spec"><button class="btn btn-danger">删除配置</button><span class="lbl">危险主按钮 · 仅确认框</span></div>
+          <div class="spec"><button class="btn btn-danger fx-hover">删除配置</button><span class="lbl">危险主按钮 · 悬停实心红</span></div>
+        </div>
+      </div>
+
+      <!-- 图标按钮 -->
+      <div class="lib-row">
+        <div class="lib-lbl">图标按钮</div>
+        <div class="lib-items">
+          <div class="spec"><button class="ibtn" aria-label="设置">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.6 4.4H12.4M1.6 9.6H12.4"/><circle cx="4.2" cy="4.4" r="2"/><circle cx="9.8" cy="9.6" r="2"/></svg>
+          </button><span class="lbl">26 · 常态（无描边）</span></div>
+          <div class="spec"><button class="ibtn fx-hover" aria-label="设置">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.6 4.4H12.4M1.6 9.6H12.4"/><circle cx="4.2" cy="4.4" r="2"/><circle cx="9.8" cy="9.6" r="2"/></svg>
+          </button><span class="lbl">26 · 悬停 Hover</span></div>
+          <div class="spec"><button class="ibtn fx-pressed" aria-label="设置">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.6 4.4H12.4M1.6 9.6H12.4"/><circle cx="4.2" cy="4.4" r="2"/><circle cx="9.8" cy="9.6" r="2"/></svg>
+          </button><span class="lbl">26 · 按下 Pressed</span></div>
+          <div class="spec"><button class="ibtn sel" aria-label="当前工具">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.4 12.6 4.3 7 7.2 1.4 4.3 Z"/><path d="M1.4 7.6 7 10.5 12.6 7.6M1.4 10.4 7 13.3 12.6 10.4"/></svg>
+          </button><span class="lbl">26 · 选中 AccentSoft</span></div>
+          <div class="spec"><button class="ibtn" disabled aria-label="设置">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.6 4.4H12.4M1.6 9.6H12.4"/><circle cx="4.2" cy="4.4" r="2"/><circle cx="9.8" cy="9.6" r="2"/></svg>
+          </button><span class="lbl">26 · 禁用 0.28</span></div>
+          <div class="spec"><button class="ibtn-danger" aria-label="删除">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 4.2h8.8M5.4 4.2V2.9h3.2v1.3M3.7 4.2l.5 7.1h5.6l.5-7.1M5.8 6.3v3.2M8.2 6.3v3.2"/></svg>
+          </button><span class="lbl">危险图标 · 常态</span></div>
+          <div class="spec"><button class="ibtn-danger fx-hover" aria-label="删除">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 4.2h8.8M5.4 4.2V2.9h3.2v1.3M3.7 4.2l.5 7.1h5.6l.5-7.1M5.8 6.3v3.2M8.2 6.3v3.2"/></svg>
+          </button><span class="lbl">危险图标 · 悬停 DangerSoft</span></div>
+          <div class="spec"><button class="cbtn" aria-label="关闭" style="height:26px;width:26px;border-radius:4px">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+          </button><span class="lbl">关闭 · 12 画布 1.2</span></div>
+        </div>
+      </div>
+
+      <!-- 输入框 -->
+      <div class="lib-row">
+        <div class="lib-lbl">输入框</div>
+        <div class="lib-items">
+          <div class="spec"><div class="field" style="width:200px"><input value="Ctrl+Shift+Q" aria-label="快捷键"></div><span class="lbl">常态 · 30 · r6</span></div>
+          <div class="spec"><div class="field fx-hover" style="width:200px"><input value="Ctrl+Shift+Q" aria-label="快捷键"></div><span class="lbl">悬停 · LineHover</span></div>
+          <div class="spec"><div class="field fx-focus" style="width:200px"><input value="Ctrl+Shift+Q" aria-label="快捷键"></div><span class="lbl">聚焦 · FocusRing（无外环）</span></div>
+          <div class="spec"><div class="field" style="width:200px"><input placeholder="搜索图层" aria-label="搜索"></div><span class="lbl">占位符 · TextDim</span></div>
+          <div class="spec"><div class="field dis" style="width:200px"><input value="Disabled" disabled aria-label="禁用"></div><span class="lbl">禁用 · Sunken</span></div>
+          <div class="spec"><div class="field err" style="width:200px"><input value="E/04" aria-label="图层名"></div><span class="err-txt">含 CAD 不允许的字符（&lt; &gt; / \ " : ? * , =）</span><span class="lbl">错误 · Danger 描边</span></div>
+        </div>
+      </div>
+
+      <!-- 下拉 -->
+      <div class="lib-row">
+        <div class="lib-lbl">下拉框</div>
+        <div class="lib-items">
+          <div class="spec"><div class="select" style="width:200px"><span class="val">建筑标准配置</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div><span class="lbl">常态 · 30 · 箭头区 24</span></div>
+          <div class="spec"><div class="select fx-hover" style="width:200px"><span class="val">建筑标准配置</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div><span class="lbl">悬停 · 箭头提亮</span></div>
+          <div class="spec"><div class="select fx-focus" style="width:200px"><span class="val">建筑标准配置</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div><span class="lbl">打开 · FocusRing</span></div>
+          <div class="spec"><div class="pop" style="width:200px">
+            <div class="item sel"><span>建筑标准配置</span><span class="ck"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 6.2 4.8 8.6 9.6 3.8"/></svg></span></div>
+            <div class="item fx-hover"><span>结构出图配置</span><span class="ck"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 6.2 4.8 8.6 9.6 3.8"/></svg></span></div>
+            <div class="item"><span>机电点位配置</span><span class="ck"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.4 6.2 4.8 8.6 9.6 3.8"/></svg></span></div>
+          </div><span class="lbl">弹层 · 选中 = 软底 + 对勾（非实心蓝）</span></div>
+        </div>
+      </div>
+
+      <!-- 开关 -->
+      <div class="lib-row">
+        <div class="lib-lbl">开关</div>
+        <div class="lib-items">
+          <div class="spec"><span class="sw" data-switch role="switch" aria-checked="false" aria-label="启用"><i></i></span><span class="lbl">关 · SwitchTrack</span></div>
+          <div class="spec"><span class="sw on" data-switch role="switch" aria-checked="true" aria-label="启用"><i></i></span><span class="lbl">开 · Accent + AccentLine</span></div>
+          <div class="spec"><span class="sw fx-hover" role="switch" aria-checked="false" aria-label="启用"><i></i></span><span class="lbl">悬停 · 钮变纯白</span></div>
+          <div class="spec"><span class="sw on dis" role="switch" aria-checked="true" aria-label="启用"><i></i></span><span class="lbl">禁用 0.32</span></div>
+          <div class="spec" style="flex-direction:row;align-items:center;gap:6px">
+            <span class="sw on" data-switch role="switch" aria-checked="true" aria-label="启用"><i></i></span><span class="sw-lbl">已启用</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- chip -->
+      <div class="lib-row">
+        <div class="lib-lbl">分类 chip<br><span style="font-weight:400;color:var(--yb-text-faint)">词条＝前缀原文</span></div>
+        <div class="lib-items">
+          <div class="spec"><span class="chip">A <span class="n">6</span></span><span class="lbl">常态 · 22 · r4</span></div>
+          <div class="spec"><span class="chip fx-hover">A <span class="n">6</span></span><span class="lbl">悬停 · 白 8% 叠加</span></div>
+          <div class="spec"><span class="chip sel">A <span class="n">6</span></span><span class="lbl">选中 · AccentSoft + AccentLine</span></div>
+          <div class="spec"><span class="chip sel fx-hover">A <span class="n">6</span></span><span class="lbl">选中 + 悬停 · 描边 AccentHi</span></div>
+          <div class="spec"><span class="chip" title="6 个图层">其他 <span class="n">6</span></span><span class="lbl">「其他」永远末位 · tooltip「N 个图层」</span></div>
+          <div class="spec" style="width:100%"><div class="chip-bar">
+            <span class="chip sel">全部 <span class="n">14</span></span>
+            <span class="chip">A <span class="n">6</span></span>
+            <span class="chip">E <span class="n">2</span></span>
+            <span class="chip">其他 <span class="n">6</span></span>
+          </div><span class="lbl">chip 容器 · Sunken 底 + 内边距 6（行高 34）· 全部首位 → 前缀字母升序 → 其他末位</span></div>
+        </div>
+      </div>
+
+      <!-- 列表行 -->
+      <div class="lib-row">
+        <div class="lib-lbl">列表行</div>
+        <div class="lib-items">
+          <div class="spec"><div class="list" style="width:250px">
+            <div class="row28"><span class="c12" style="background:#FFFFFF"></span><span class="nm">A-墙</span><span class="st">正常</span></div>
+          </div><span class="lbl">常态 · 28</span></div>
+          <div class="spec"><div class="list" style="width:250px">
+            <div class="row28 fx-hover"><span class="c12" style="background:#FFFFFF"></span><span class="nm">A-墙</span><span class="st">正常</span></div>
+          </div><span class="lbl">悬停 · HoverRow</span></div>
+          <div class="spec"><div class="list" style="width:250px">
+            <div class="row28 sel"><span class="c12" style="background:#FFFF00"></span><span class="nm">A-柱</span><span class="st">已冻结</span></div>
+          </div><span class="lbl">选中 · 2px 左缘 + 软底</span></div>
+          <div class="spec"><div class="list" style="width:250px">
+            <div class="row28 dis"><span class="c12" style="background:#00FFFF"></span><span class="nm">A-门窗</span><span class="st">已锁定</span></div>
+          </div><span class="lbl">禁用 · TextDisabled</span></div>
+          <div class="spec"><div class="list" style="width:250px">
+            <div class="row28"><span class="c12" style="background:#FFFFFF"></span><span class="nm">0</span><span class="st">正常</span></div>
+            <div class="row28"><span class="c12" style="background:#FF7F00"></span><span class="nm">D-01 粗线</span><span class="st">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3.9"/><path d="M3.3 3.3l5.4 5.4"/></svg>
+              已关闭</span></div>
+          </div><span class="lbl">连续行 · 末行不画分隔线</span></div>
+        </div>
+      </div>
+
+      <!-- 复选 -->
+      <div class="lib-row">
+        <div class="lib-lbl">复选方块</div>
+        <div class="lib-items">
+          <div class="spec"><span class="cbx" data-check role="checkbox" aria-checked="false"></span><span class="lbl">常态 · 14 · r4</span></div>
+          <div class="spec"><span class="cbx fx-hover" role="checkbox" aria-checked="false"></span><span class="lbl">悬停 · LineControl</span></div>
+          <div class="spec"><span class="cbx checked" data-check role="checkbox" aria-checked="true"></span><span class="lbl">选中 · 实心 Accent</span></div>
+          <div class="spec"><span class="cbx indet"></span><span class="lbl">半选 · AccentSoft + 横线</span></div>
+          <div class="spec"><span class="cbx dis"></span><span class="lbl">禁用 · Line 描边</span></div>
+          <div class="spec"><span class="cbx-lbl"><span class="cbx checked" data-check role="checkbox" aria-checked="true"></span>同时设为当前图层</span><span class="lbl">整块可点 · 最小高 24</span></div>
+        </div>
+      </div>
+
+      <!-- 滚动条 / tooltip -->
+      <div class="lib-row">
+        <div class="lib-lbl">滚动条<br>tooltip</div>
+        <div class="lib-items">
+          <div class="spec">
+            <div style="display:flex;gap:12px">
+              <div style="background:var(--yb-sunken);padding:0 2px;height:120px;display:flex">
+                <div class="sbar"><i style="top:8px;height:44px"></i></div>
+              </div>
+              <div style="background:var(--yb-sunken);padding:0 2px;height:120px;display:flex">
+                <div class="sbar fx-hover"><i style="top:8px;height:44px"></i></div>
+              </div>
+            </div>
+            <span class="lbl">宽 12 / 滑块 8 r6 · 左 常态 ScrollThumb，右 悬停 ScrollThumbHover</span>
+          </div>
+          <div class="spec">
+            <div class="tip">新建配置（沿用当前映射）</div>
+            <span class="lbl">tooltip · Raised / r4 / 内边距 8,4 / 无投影</span>
+          </div>
+          <div class="spec">
+            <div class="tip" style="max-width:200px;line-height:16px">该图层当前已关闭，应用时会自动打开</div>
+            <span class="lbl">最宽 280 · 换行 · ≤22 个汉字</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 空状态 -->
+      <div class="lib-row">
+        <div class="lib-lbl">空状态</div>
+        <div class="lib-items">
+          <div class="spec">
+            <div style="width:300px;height:186px;background:var(--yb-sunken);border:1px solid var(--yb-line);display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <div class="empty" style="padding:0">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="var(--yb-empty-art-fill)" stroke="var(--yb-empty-art)" stroke-width="1.4"/>
+                  <path d="M7 9h10M7 12.5h7M7 16h4" stroke="var(--yb-empty-art)" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <span class="t">没有匹配「e07」的图层</span>
+                <span class="d">当前只看「A」前缀，换个关键词试试。</span>
+                <button class="btn btn-ghost a" style="height:32px;padding:0 16px">清除搜索</button>
+              </div>
+            </div>
+            <span class="lbl">线稿 24 / 描边 1.4 / 整体上偏 8 · 文案必须含当前过滤条件</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 03 · 图层切换面板 改造前 / 改造后 ============================ -->
+  <section class="sec" id="cc">
+    <div class="sec-hd"><span class="n">03</span><h2>图层切换面板 · 360 × 480</h2><span class="dim">改造前 / 改造后并排 · 唯一偏离项的收敛</span></div>
+    <p class="sec-desc">
+      左侧是当前线上形态（Visual Studio 灰，旧代码 <code>src_cc/Views/LayerSelectionWindow.xaml</code>），
+      右侧是迁移后的目标形态（01 §7.4 骨架 + 02 §3.2 目标线框）。两侧同尺寸、同内容量，便于逐行比对。
+      旧色值只在本节的对照区出现，其它 artboard 一律不得复用。
+      <br>
+      <b style="color:var(--yb-text)">分类 chip 两侧都按图层名前缀切</b>      （<code>LayerCategoryService.DetectCategories</code>：
+      按 <code>-</code> <code>_</code> <code>.</code> 切第一段、1–8 字符、超长取前 3、统一大写；≥2 个图层才成组；<code>全部</code> 首位 → 前缀字母升序 →
+      <code>其他</code> 末位，且 <code>其他</code> 吃掉零散前缀与图层 <code>0</code>）。示例图纸 14 个图层 →
+      <code>全部 14 / A 6 / E 2 / 其他 6</code>。两侧唯一的差别是：旧版词条不带计数（计数只在 ToolTip），新版把计数显性写到 8.5 <code>TextFaint</code>。
+      <b style="color:var(--yb-text)">本稿不出现「建筑 / 结构 / 机电」这类语义分类</b>——那不是这个产品的分组方式。
+    </p>
+
+    <div class="row">
+      <!-- ---------------- 改造前 ---------------- -->
+      <div>
+        <div class="cap"><b>改造前 · 旧 VS 灰</b><span class="sz">360 × 480 · FontFamily 写死 Microsoft YaHei / 13px</span></div>
+        <div class="ab old o-vars" style="width:360px;height:480px">
+          <div class="obar">
+            <span class="t">图层切换</span>
+            <button class="obtn" title="打开归层设置">⚙</button>
+            <button class="obtn" title="切换深色 / 浅色背景">◐</button>
+            <button class="oclose" title="关闭">✕</button>
+          </div>
+          <div class="omain">
+            <div class="osearch"><span>搜索图层...</span><span class="x">✕</span></div>
+            <!-- 旧版分类 chip：本来就是按图层名前缀切（LayerCategoryService），词条不带计数 -->
+            <div class="ocat"><b class="sel">全部</b><b>A</b><b>E</b><b>其他</b></div>
+            <div class="olist">
+              <div class="ohead">最近使用</div>
+              <div class="orow"><span class="sq" style="background:#FF7F00"></span><span class="nm">E-04 造型线</span><span class="st"></span></div>
+              <div class="orow"><span class="sq" style="background:#FFFFFF"></span><span class="nm">A-墙</span><span class="st"></span></div>
+              <div class="ohead">全部图层</div>
+              <div class="orow"><span class="sq" style="background:#FFFFFF"></span><span class="nm">0</span><span class="st"></span></div>
+              <div class="orow"><span class="sq" style="background:#FFFFFF"></span><span class="nm">A-墙</span><span class="st"></span></div>
+              <div class="orow hl"><span class="sq" style="background:#00FF00"></span><span class="nm">A-柱</span><span class="st">已冻结</span></div>
+              <div class="orow sel"><span class="sq" style="background:#00FFFF"></span><span class="nm">A-门窗</span><span class="st">已锁定</span></div>
+              <div class="orow"><span class="sq" style="background:#FF7F00"></span><span class="nm">E-04 造型线</span><span class="st"></span></div>
+            </div>
+            <div class="ofoot"><span class="wcbx"></span>同时设为当前图层</div>
+          </div>
+        </div>
+        <p class="hint warn" style="margin-top:10px;max-width:360px">
+          问题：第四套蓝（#0078D4 / #094771 / #1B3A5C 三个蓝底并存）、四个圆角值（0 / 2 / 3 / 6）、
+          三个按钮语义重叠（取消 / 确定 / 完成）、◐ 主题切换只改本窗口与全站冲突；列表里
+          「最近使用」与「全部图层」同名项出现两次，且标题行可被 ↑↓ 聚焦。
+        </p>
+      </div>
+
+      <!-- ---------------- 改造后 ---------------- -->
+      <div>
+        <div class="cap"><b>改造后 · 统一语言</b><span class="sz">360 × 480 · 标题栏 32 / 行 28 / 内容区左右 18</span></div>
+        <div class="ab yb" style="width:360px;height:480px;display:flex;flex-direction:column">
+          <div class="tbar c32">
+            <div class="tbar-main">
+              <span class="tbar-title">图层切换</span>
+              <span class="spacer"></span>
+              <!-- V1.0 的「打开主面板」入口保留：从 CC 直接跳主面板。图标统一为窗口+箭头，不再贴着 ✕，中间留 12 净空 -->
+              <button class="ibtn" style="margin-right:12px" title="打开主面板（QH）· 与关闭按钮留 12 净空" aria-label="打开主面板">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="10" rx="1.6"/><path d="M6.4 3v10M9.2 8h3.4M11.2 6.4 12.8 8l-1.6 1.6"/></svg>
+              </button>
+            </div>
+            <button class="cbtn" title="取消并关闭（Esc）" aria-label="取消并关闭">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+            </button>
+          </div>
+
+          <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 18px 0">
+            <!-- 搜索 30 · 自动聚焦 -->
+            <div class="field">
+              <input id="cc-search" placeholder="搜索图层" data-filter="cc-list" aria-label="搜索图层">
+              <button class="clr" id="cc-clear" data-clear="cc-search" style="display:none" aria-label="清除搜索">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+              </button>
+            </div>
+
+            <!-- 分类 chip 栏（Sunken + 内边距 6）· 词条 = 图层名前缀原文，按字母升序，「其他」末位 -->
+            <div class="chip-bar" style="margin-top:6px" data-chipgroup>
+              <span class="chip sel" data-chip role="tab" aria-selected="true" title="14 个图层">全部 <span class="n">14</span></span>
+              <span class="chip" data-chip role="tab" aria-selected="false" title="6 个图层">A <span class="n">6</span></span>
+              <span class="chip" data-chip role="tab" aria-selected="false" title="2 个图层">E <span class="n">2</span></span>
+              <span class="chip" data-chip role="tab" aria-selected="false" title="6 个图层">其他 <span class="n">6</span></span>
+            </div>
+
+            <!-- 模式条 26：唯一权威指示"这次搬图元还是切当前层" -->
+            <div class="modebar" style="margin-top:6px">
+              <span>将 3 个图元移到目标层</span>
+              <span class="act">改选
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 1.4 5.6 4l-3 2.6"/></svg>
+              </span>
+            </div>
+
+            <!-- 最近快捷行 26（不在列表内、不参与 ↑↓） -->
+            <div style="height:26px;display:flex;align-items:center;gap:6px;margin-top:6px">
+              <span style="font-size:10.5px;font-weight:600;color:var(--yb-text-dim)">最近</span>
+              <span class="chip">A-墙</span>
+              <span class="chip">E-04 造型线</span>
+              <span class="chip">DIM-标注</span>
+            </div>
+
+            <!-- 列表：单选 + 键盘游标 + 选中即预览 -->
+            <div class="list" id="cc-list" style="margin-top:6px;flex:0 0 auto;overflow:hidden;border-top:1px solid var(--yb-line)">
+              <div class="liststat" style="margin-top:0">14 个图层</div>
+              <div class="row28" data-row="0"><span class="c12" style="background:#FFFFFF"></span><span class="nm">0</span><span class="st">正常</span></div>
+              <div class="row28" data-row="A-墙"><span class="c12" style="background:#FFFFFF"></span><span class="nm">A-墙</span><span class="st">正常</span></div>
+              <div class="row28" data-row="A-柱"><span class="c12" style="background:#00FF00"></span><span class="nm">A-柱</span><span class="st">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 1.6v8.8M2.2 4.1l7.6 4M9.8 4.1l-7.6 4"/></svg>
+                已冻结</span></div>
+              <div class="row28" data-row="A-门窗"><span class="c12" style="background:#00FFFF"></span><span class="nm">A-门窗</span><span class="st">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="6" cy="6" r="3.9"/><path d="M3.3 3.3l5.4 5.4"/></svg>
+                已关闭</span></div>
+              <div class="row28" data-row="A-楼梯"><span class="c12" style="background:#FFFF00"></span><span class="nm">A-楼梯</span><span class="st">正常</span></div>
+              <div class="row28" data-row="A-楼板"><span class="c12" style="background:#C0C0C0"></span><span class="nm">A-楼板</span><span class="st">正常</span></div>
+              <div class="row28 sel" data-row="E-04 造型线"><span class="c12" style="background:#FF7F00"></span><span class="nm">E-04 造型线</span><span class="st">正常</span></div>
+              <!-- 空状态（P0-3：0 行时必须给文案 + 出路，禁止静默空白） -->
+              <div class="empty" id="cc-empty" style="display:none;padding:24px 0">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="var(--yb-empty-art-fill)" stroke="var(--yb-empty-art)" stroke-width="1.4"/>
+                  <path d="M7 9h10M7 12.5h7M7 16h4" stroke="var(--yb-empty-art)" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <span class="t">没有匹配的图层</span>
+                <span class="d">换个关键词，或把前缀切回「全部」。</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部：一个主操作，文案即结果预览 -->
+          <div class="foot" style="padding:6px 18px 14px">
+            <span class="cbx-lbl"><span class="cbx checked" data-check role="checkbox" aria-checked="true"></span>同时设为当前图层</span>
+            <span class="btns">
+              <button class="btn btn-ghost">取消</button>
+              <button class="btn btn-primary">移到该层</button>
+            </span>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px;max-width:360px">
+          结构变化：标题栏「打开主面板」入口（V1.0 的 ⚙）保留，图标换成更明确的"窗口 + 箭头"，与 ✕ 拉开 12 净空，避免误点；「完成/确定」冗余按钮与 ◐ 主题切换暂移出本稿（◐ 只切本窗口，是否做成全插件联动见 09 节待定项）；新增模式条与最近快捷行；列表只保留一段，
+          无重复项、无不可聚焦却占据 ↑↓ 的标题行；底部只有一个主按钮，文案随模式变化。
+        </p>
+      </div>
+    </div>
+
+    <!-- ---------------- 旧值 → 新值 标注 ---------------- -->
+    <div class="diffs o-vars">
+      <div class="dh"><span>旧值（改造前）</span><span>映射</span><span>新值（改造后）</span><span>为什么改</span></div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-winbg);box-shadow:inset 0 0 0 1px var(--yb-line-strong)"></i>#1E1E1E 窗口底 / 列表底</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-bg-deep)"></i>BgDeep #141519 / Sunken #1A1B20</span>
+        <span class="why">单一灰阶差撑不起层次：窗口底与列表底拆成两层，列表比窗口"再凹一层"，靠底色差 + 1px 发丝线分层。</span>
+      </div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-sel)"></i>#0078D4 选中 chip / 图纸高亮</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-accent-soft)"></i>AccentSoft #1E2A44 + AccentLine 描边</span>
+        <span class="why">实心蓝只属主操作。选中态改软蓝底 + 1px 蓝描边，文字用 AccentInk（不是纯白）。</span>
+      </div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-itemsel)"></i>#094771 列表行选中</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-selection-bg)"></i>SelectionBg #1E2A44 + 2px SelectionMark</span>
+        <span class="why">行选中不描边：1px 蓝框在 28px 行上会被读成"焦点框"。改左侧 2px 竖条，与标题栏 3px 状态条同语言。</span>
+      </div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-head)"></i>#1B3A5C 分组标题色块</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-bg-deep)"></i>透明 + 顶部 1px Line + 10.5 SemiBold TextDim</span>
+        <span class="why">分组标题是导航标签，不该比图层名更亮；层级靠字号 + 字重 + 分隔线，不靠第三个蓝底色块。</span>
+      </div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-close)"></i>#C42B1C 关闭按钮 hover</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-hover)"></i>Hover #14FFFFFF + 图标提亮到 Text</span>
+        <span class="why">红色在这个产品里已被"不可撤销的破坏"占用。关窗可撤销，一旦红底泛滥，真正的危险按钮就失去警示力。</span>
+      </div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-bar)"></i>圆角 0 / 2 / 3 / 6 + 字号 13</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-raised)"></i>圆角 4 / 6 / 8 / 15 + 字号 13.5</span>
+        <span class="why">四档圆角吃掉全部控件；13px 标题收敛到 Title 13.5，FontFamily 改回 UiTheme.Font，中英文混排字重才不跳。</span>
+      </div>
+      <div class="dr">
+        <span class="old-v"><i style="background:var(--o-bar)"></i>分类词条 <code>A</code>（无数字，计数只在 ToolTip）</span>
+        <span class="arw"><span class="ln"></span>
+          <svg width="14" height="8" viewBox="0 0 14 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h11M9 1.2 11.8 4 9 6.8"/></svg>
+        </span>
+        <span class="new-v"><i style="background:var(--yb-text-faint)"></i>A <b style="font-weight:400;color:var(--yb-text)">6</b>（8.5 TextFaint 跟在词条后）</span>
+        <span class="why">词条本身不动——两侧都按图层名前缀切（字母升序、其他末位），旧版就是这么分组的。只把计数从"要悬停才知道"改成常显：这个面板最常被问的数字就是"这个前缀下有几个图层"。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 04 · 主面板 + 选择图层对话框 ============================ -->
+  <section class="sec" id="panel">
+    <div class="sec-hd"><span class="n">04</span><h2>主面板 · 470 宽（高自适应）</h2><span class="dim">QH · 改"规矩"的地方</span></div>
+    <p class="sec-desc">
+      <b style="color:var(--yb-text)">配置区结构照 V1.0 不动</b>：「下拉 + ＋ ✎ ⧉ │ 🗑」四个动作并列可见、不进「⋯」菜单；
+      删除常显 <code>Danger</code> 色 + 前面一条 1×14 <code>LineStrong</code> 分隔线（净空 6），误点风险用颜色解决，不用"收起来"解决。本轮只做 token / 间距 / 对齐收口。
+      <br>
+      <b style="color:var(--yb-text)">映射行回到 V1.0 的「图层池」模型</b>：一个类别可以挂多个图层，行内按层数分三种形态——
+      <b style="color:var(--yb-text)">0 层</b>「＋ 选图层」／<b style="color:var(--yb-text)">1 层</b> 一个 chip +「＋ 再加一层」／
+      <b style="color:var(--yb-text)">≥2 层</b> 摘要「N 层 · 当前层」+ 行尾 ＋，<b style="color:var(--yb-text)">点摘要行内展开成 chips（换行、行高变高）</b>。
+      当前层用 <code>AccentSoft</code> 底 + inset 1px <code>LineControl</code> + 白字，是"点一下换层"唯一的视觉依据。上限一类 16 层（圆盘扇区数）。
+    </p>
+
+    <div class="row">
+      <!-- ---------------- 主面板 ---------------- -->
+      <div>
+        <div class="cap"><b>主面板 · 三种池形态同屏</b><span class="sz">宽 470 · 高自适应（Min 380 / Max 740 · 本图为 7 类映射的自然高度）</span></div>
+        <div class="ab yb" style="width:470px;display:flex;flex-direction:column">
+          <div class="tbar">
+            <i class="stripe s-ok"></i>
+            <div class="tbar-main">
+              <span class="dot ok"></span>
+              <span class="tbar-title">Y_图层工具箱</span>
+              <span class="tbar-sub">V1.0</span>
+              <span class="spacer"></span>
+              <button class="ibtn" title="设置（ALSET）" aria-label="设置">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M1.6 4.4H12.4M1.6 9.6H12.4"/><circle cx="4.2" cy="4.4" r="2"/><circle cx="9.8" cy="9.6" r="2"/></svg>
+              </button>
+              <button class="ibtn" title="图层切换（命令 CC）" aria-label="图层切换">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1.4 12.6 4.3 7 7.2 1.4 4.3 Z"/><path d="M1.4 7.6 7 10.5 12.6 7.6M1.4 10.4 7 13.3 12.6 10.4"/></svg>
+              </button>
+              <span style="display:inline-flex;align-items:center;gap:6px;margin:0 10px 0 4px">
+                <span class="sw-lbl">已启用</span>
+                <span class="sw on" data-switch role="switch" aria-checked="true" aria-label="启用插件"><i></i></span>
+              </span>
+            </div>
+            <button class="cbtn" title="关闭（改动即时生效，关窗即落盘）" aria-label="关闭">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+            </button>
+          </div>
+
+          <div class="body-pad">
+            <!-- 配置区：下拉 + 4 个并列图标（新建 / 重命名 / 复制 / 删除），回到 V1.0 的一眼可达 -->
+            <div class="frow">
+              <span class="k">配置</span>
+              <div class="select" style="flex:1;min-width:0">
+                <span class="val">建筑标准配置</span>
+                <span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span>
+              </div>
+              <span style="display:inline-flex;align-items:center;gap:2px">
+                <button class="ibtn" title="新建配置（沿用当前配置的图层设置）" aria-label="新建配置">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+                </button>
+                <button class="ibtn" title="重命名当前配置" aria-label="重命名配置">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 12.8 3.9 10.1 10.5 3.5 12.5 5.5 5.9 12.1Z"/></svg>
+                </button>
+                <button class="ibtn" title="复制当前配置，改出一个新的" aria-label="复制配置">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 5.5h7v7h-7zM3.5 10.5v-7h7"/></svg>
+                </button>
+                <span class="sep-v"></span>
+                <button class="ibtn danger" title="删除当前配置（至少保留一个）" aria-label="删除配置">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 4.8h9M6.2 4.8V3.2h3.6v1.6M5 4.8l.6 8h4.8l.6-8"/></svg>
+                </button>
+              </span>
+            </div>
+
+            <!-- 提示行：两行分开写，不让浏览器在「保」字上断行 -->
+            <p style="margin:10px 0 0;font-size:11.5px;line-height:16px;color:var(--yb-text-dim)">
+              命令前后自动切层 / 还原 · 右键长按 0.18 秒弹圆盘<br>
+              点标签＝换下一条命令用的层 · 点 ＋ 加层 · 改动即时生效，保存才写盘
+            </p>
+
+            <!-- 映射表 · 7 个类别（源码 Rules.cs Categories.All）· 三种池形态同屏可对比 -->
+            <div class="tbl-hd" style="margin-top:14px">
+              <span>类别</span><span>目标图层 / 颜色</span><span style="text-align:right">状态</span>
+            </div>
+            <div class="prow">
+              <span class="cat">线段</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">E-04 造型线 ; E-05 辅助线</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="psum" title="点一下在这一行里展开 2 个图层"><span class="arw">&#9656;</span><span class="cnt">2 层</span><span class="dotsep">&middot;</span><span class="cur">E-04 造型线</span></button>
+                <button class="add" title="从图纸里勾图层，可以一次勾多个" aria-label="添加图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg></button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">文字</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">T-文字</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>再加一层</button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">标注</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">DIM-标注</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>再加一层</button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">填充</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">H-填充</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st warn">缺失</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>再加一层</button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">引线</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打，例如：E-04 造型线 ; E-05 辅助线"><span class="val" style="color:var(--yb-text-faint)">&mdash;</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st faint">待配置</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>选图层</button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">块</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">A-墙 ; A-柱 ; A-门窗 ; A-楼梯 &hellip;</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="psum" title="点一下在这一行里展开 6 个图层"><span class="arw">&#9656;</span><span class="cnt">6 层</span><span class="dotsep">&middot;</span><span class="cur">A-墙</span></button>
+                <button class="add" title="从图纸里勾图层，可以一次勾多个" aria-label="添加图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg></button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">视口</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">0</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>再加一层</button>
+              </div>
+            </div>
+          <div class="hr" style="margin:14px 18px 0"></div>
+          <div class="foot">
+            <span class="st warn"><i class="d6"></i>2 处未存盘</span>
+            <span class="btns">
+              <button class="btn btn-primary tall">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 8.4 6.2 11.4 12.8 4.6"/></svg>
+                保存并关闭
+              </button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------- 选择图层对话框 ---------------- -->
+      <div>
+        <div class="cap"><b>选择图层对话框</b><span class="sz">400 × 500 · 卡片壳 r8 · 零投影（1px LineStrong 分界）</span></div>
+        <div class="card yb" style="width:400px;height:500px">
+          <div class="tbar c32" style="border-radius:8px 8px 0 0">
+            <div class="tbar-main">
+              <span class="tbar-title">选择图层</span>
+              <span class="tbar-sub">块 · 可多选</span>
+              <span class="spacer"></span>
+              <button class="cbtn-s" style="margin-right:11px" title="取消" aria-label="取消">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 18px 0">
+            <div class="field">
+              <input placeholder="搜索图层" aria-label="搜索图层">
+            </div>
+            <div class="list" style="margin-top:6px;flex:0 0 auto;overflow:hidden;border-top:1px solid var(--yb-line)">
+              <div class="row28"><span class="cbx" data-check role="checkbox" aria-checked="false"></span><span class="c12" style="background:#FFFFFF"></span><span class="nm">0</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx checked" data-check role="checkbox" aria-checked="true" aria-label="A-墙"></span><span class="c12" style="background:#FFFFFF"></span><span class="nm">A-墙</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx checked" data-check role="checkbox" aria-checked="true" aria-label="A-柱"></span><span class="c12" style="background:#00FF00"></span><span class="nm">A-柱</span><span class="st">已冻结</span></div>
+              <div class="row28"><span class="cbx checked" data-check role="checkbox" aria-checked="true" aria-label="A-门窗"></span><span class="c12" style="background:#00FFFF"></span><span class="nm">A-门窗</span><span class="st">已锁定</span></div>
+              <div class="row28"><span class="cbx checked" data-check role="checkbox" aria-checked="true" aria-label="A-楼梯"></span><span class="c12" style="background:#FFFF00"></span><span class="nm">A-楼梯</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx checked" data-check role="checkbox" aria-checked="true" aria-label="A-楼板"></span><span class="c12" style="background:#C0C0C0"></span><span class="nm">A-楼板</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx checked" data-check role="checkbox" aria-checked="true" aria-label="A-散水"></span><span class="c12" style="background:#FF0000"></span><span class="nm">A-散水</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx" data-check role="checkbox" aria-checked="false"></span><span class="c12" style="background:#FFFF00"></span><span class="nm">DIM-标注</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx" data-check role="checkbox" aria-checked="false"></span><span class="c12" style="background:#FF7F00"></span><span class="nm">E-04 造型线</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx" data-check role="checkbox" aria-checked="false"></span><span class="c12" style="background:#FF7F00"></span><span class="nm">E-05 辅助线</span><span class="st">正常</span></div>
+              <div class="row28"><span class="cbx" data-check role="checkbox" aria-checked="false"></span><span class="c12" style="background:#FF00FF"></span><span class="nm">F-家具</span><span class="st">正常</span></div>
+            </div>
+          </div>
+
+          <div class="foot" style="padding:14px 18px">
+            <span class="st">已选 <b style="font-weight:400;color:var(--yb-accent-ink)">6</b> 个</span>
+            <span class="btns">
+              <button class="btn btn-ghost">取消</button>
+              <button class="btn btn-primary">确定</button>
+            </span>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px;max-width:400px">
+          勾选结果提交后才生效（模态，取消 = 返回 null）；「确定」专指"提交勾选结果"，
+          不与图层切换面板的"移到该层"混用。
+        </p>
+      </div>
+
+      <!-- ---------------- 映射行：展开态（>4 层的答案） ---------------- -->
+      <div>
+        <div class="cap"><b>展开态 · 块（6 层）</b><span class="sz">点摘要行 → 行内铺开 chips：换行、行高变高、后续行被推下去</span></div>
+        <div class="ab yb" style="width:470px;display:flex;flex-direction:column">
+          <div style="padding:12px 18px 14px">
+            <div class="tbl-hd">
+              <span>类别</span><span>目标图层 / 颜色</span><span style="text-align:right">状态</span>
+            </div>
+            <div class="prow">
+              <span class="cat">填充</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">H-填充</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st warn">缺失</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>再加一层</button>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">块</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">A-墙 ; A-柱 ; A-门窗 ; A-楼梯 &hellip;</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="psum" title="点一下收起"><span class="arw">&#9662;</span><span class="cnt">6 层</span><span class="dotsep">&middot;</span><span class="cur">A-墙</span></button>
+                <button class="add" title="从图纸里勾图层，可以一次勾多个" aria-label="添加图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg></button>
+              </div>
+              <div class="pool-chips">
+                <span class="lchip on"><i class="c8" style="background:#FFFFFF"></i><span class="nm">A-墙</span><span class="aci">7</span><button class="x" aria-label="移除 A-墙"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3.4 3.4l5.2 5.2M8.6 3.4L3.4 8.6"/></svg></button></span>
+                <span class="lchip"><i class="c8" style="background:#00FF00"></i><span class="nm">A-柱</span><span class="aci">3</span><button class="x" aria-label="移除 A-柱"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3.4 3.4l5.2 5.2M8.6 3.4L3.4 8.6"/></svg></button></span>
+                <span class="lchip"><i class="c8" style="background:#00FFFF"></i><span class="nm">A-门窗</span><span class="aci">4</span><button class="x" aria-label="移除 A-门窗"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3.4 3.4l5.2 5.2M8.6 3.4L3.4 8.6"/></svg></button></span>
+                <span class="lchip"><i class="c8" style="background:#FFFF00"></i><span class="nm">A-楼梯</span><span class="aci">2</span><button class="x" aria-label="移除 A-楼梯"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3.4 3.4l5.2 5.2M8.6 3.4L3.4 8.6"/></svg></button></span>
+                <span class="lchip"><i class="c8" style="background:#C0C0C0"></i><span class="nm">A-楼板</span><span class="aci">9</span><button class="x" aria-label="移除 A-楼板"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3.4 3.4l5.2 5.2M8.6 3.4L3.4 8.6"/></svg></button></span>
+                <span class="lchip"><i class="c8" style="background:#FF0000"></i><span class="nm">A-散水</span><span class="aci">1</span><button class="x" aria-label="移除 A-散水"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3.4 3.4l5.2 5.2M8.6 3.4L3.4 8.6"/></svg></button></span>
+              </div>
+            </div>
+            <div class="prow">
+              <span class="cat">视口</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">0</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="addlbl" title="从图纸里勾图层"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg>再加一层</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px;max-width:470px">
+          展开是<b style="color:var(--yb-text)">行内</b>行为：chips 按 22 高 + 6 间距换行，470 宽时 6 个排成 <b style="color:var(--yb-text)">3 + 3</b> 两行（chip 区 346 宽），
+          行高 <b style="color:var(--yb-text)">57 → 113</b>（实测），下面的行整体下移。<b style="color:var(--yb-text)">没有 <code>+N</code> 折叠浮层、没有横向滚动、没有行高不变</b>——
+          这一类里有几个图层，展开后一眼全看见。当前层（A-墙）= <code>AccentSoft</code> 底 + inset 1px <code>LineControl</code> + 白字。
+        </p>
+      </div>
+
+      <!-- ---------------- 映射行：上限态 16 层 ---------------- -->
+      <div>
+        <div class="cap"><b>上限态 · 一类 16 层</b><span class="sz">圆盘扇区上限 = 16 · ＋ 置灰但仍在位</span></div>
+        <div class="ab yb" style="width:470px;display:flex;flex-direction:column">
+          <div style="padding:12px 18px 42px">
+            <div class="tbl-hd">
+              <span>类别</span><span>目标图层 / 颜色</span><span style="text-align:right">状态</span>
+            </div>
+            <div class="prow">
+              <span class="cat">块</span>
+              <div class="select pool-edit" title="也可以在这里用分号手打多个图层"><span class="val">A-墙 ; A-柱 ; A-门窗 ; A-楼梯 &hellip;</span><span class="arw"><svg width="8" height="4" viewBox="0 0 8 4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l3 2.2L7 1"/></svg></span></div>
+              <span class="st">正常</span>
+              <div class="pool-line">
+                <button class="psum" title="点一下展开 16 个图层"><span class="arw">&#9656;</span><span class="cnt">16 层</span><span class="dotsep">&middot;</span><span class="cur">A-墙</span></button>
+                <span style="position:relative;display:inline-flex;align-items:center">
+                  <button class="add dis" title="一类最多 16 个图层" aria-label="已达上限，不能再加"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M6 2.6v6.8M2.6 6h6.8"/></svg></button>
+                  <span class="tip" style="position:absolute;left:-4px;top:28px;white-space:nowrap;z-index:3">一类最多 16 个图层</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:10px;max-width:470px">
+          置灰而不是隐藏：入口消失会让人以为"这一类出问题了"。tooltip 说明原因，摘要照常可展开、chip 照常可点可删。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 05 · 设置窗口 ============================ -->
+  <section class="sec" id="settings">
+    <div class="sec-hd"><span class="n">05</span><h2>设置窗口 · 500 宽</h2><span class="dim">⚙ / ALSET · 模态 · 关闭即回滚</span></div>
+    <p class="sec-desc">
+      控件清单严格照 V1.0：快捷键是<b style="color:var(--yb-text)">点击录制框</b>、触发方式是<b style="color:var(--yb-text)">四选一分段单选</b>、
+      长按时长是<b style="color:var(--yb-text)">滑杆 + 数值</b>、底部是「取消 + 保存」。不新增开关、不把单选换成下拉。
+      分组标题从 12px 收敛到 Caption 10.5 + SemiBold，层级靠 1px 分隔线而不是字号；标签列宽 76 保留，
+      长说明与输入控件左缘对齐（缩进 76），不跨到标签列下面。
+    </p>
+    <div>
+      <div class="cap"><b>设置</b><span class="sz">宽 500 · 高自适应</span></div>
+      <div class="ab yb" style="width:500px;display:flex;flex-direction:column">
+        <div class="tbar c32">
+          <div class="tbar-main">
+            <span class="tbar-title">设置</span>
+            <span class="tbar-sub">ALSET</span>
+            <span class="spacer"></span>
+          </div>
+          <button class="cbtn" title="关闭并回滚全部改动" aria-label="关闭">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg>
+          </button>
+        </div>
+
+        <div class="body-pad" style="padding-bottom:0">
+          <div class="sghd first">面板</div>
+          <div class="frow">
+            <span class="k">快捷键</span>
+            <div class="keybox" title="点一下，按下组合键即可录制（V1.0 的 KeyBox，不是普通输入框）">
+              <span>Ctrl+Shift+Q</span><span class="rec">点击录制</span>
+            </div>
+          </div>
+          <p class="fdesc">点框后直接按组合键；别用 L / C / M 这类单字母，会被 CAD 自己的别名盖住。</p>
+          <div class="frow">
+            <span class="k">CAD 命令</span>
+            <div class="field" style="width:200px"><input value="QH" aria-label="CAD 命令"></div>
+          </div>
+          <p class="fdesc">在命令行敲这个别名打开主面板。</p>
+
+          <div class="sghd">圆盘</div>
+          <div class="frow">
+            <span class="k">触发方式</span>
+            <div class="seg" role="radiogroup" aria-label="圆盘触发方式">
+              <span class="it on" role="radio" aria-checked="true">右键长按</span>
+              <span class="it" role="radio" aria-checked="false">侧键后退</span>
+              <span class="it" role="radio" aria-checked="false">侧键前进</span>
+              <span class="it" role="radio" aria-checked="false">关闭</span>
+            </div>
+          </div>
+          <div class="frow">
+            <span class="k">长按时长</span>
+            <div class="sld"><span class="track"><i></i></span><span class="val">180 ms</span></div>
+          </div>
+          <p class="fdesc">长按时长只对「右键长按」有效。按住不动到这个时间才弹，短按照旧是 CAD 的右键菜单。</p>
+        </div>
+
+        <div class="hr" style="margin:14px 18px 0"></div>
+        <div class="foot">
+          <span class="st">关闭或取消即回滚本次改动</span>
+          <span class="btns">
+            <button class="btn btn-ghost" style="height:32px">取消</button>
+            <button class="btn btn-primary" style="height:32px">保存</button>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 06 · 胶囊条 ============================ -->
+  <section class="sec" id="capsule">
+    <div class="sec-hd"><span class="n">06</span><h2>屏幕胶囊条 · 高 29</h2><span class="dim">常驻只读 · 圆角 15 · 唯一允许的窗口级投影</span></div>
+    <p class="sec-desc">
+      胶囊内部间距沿用已验收的实测值（点后 7、分隔线两侧 2+2、末段前 7），不套 sp 阶。三态在下方 1:1 展示，
+      左侧灰字是本页标注，不属于胶囊本身。
+    </p>
+    <div class="ab yb pad" style="width:420px">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="width:56px;flex:0 0 56px;font-size:10.5px;color:var(--yb-text-faint)">常态</span>
+          <div class="cap29">
+            <span class="dot ok"></span>
+            <span class="t" style="margin-left:8px">已启用</span>
+            <span class="sep" style="margin-left:7px"></span>
+            <span class="pchip">建筑标准配置</span>
+            <span class="sep"></span>
+            <span class="layer">A-墙</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="width:56px;flex:0 0 56px;font-size:10.5px;color:var(--yb-text-faint)">Warn 态</span>
+          <div class="cap29">
+            <span class="dot warn"></span>
+            <span class="t" style="margin-left:8px">已启用</span>
+            <span class="sep" style="margin-left:7px"></span>
+            <span class="pchip">建筑标准配置</span>
+            <span class="sep"></span>
+            <span class="layer">H-填充</span>
+            <span class="warn-tag">该图层已关闭</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="width:56px;flex:0 0 56px;font-size:10.5px;color:var(--yb-text-faint)">停用态</span>
+          <div class="cap29 off">
+            <span class="dot off"></span>
+            <span class="t" style="margin-left:8px">已关闭</span>
+            <span class="sep" style="margin-left:7px"></span>
+            <span class="pchip" style="color:var(--yb-text-dim)">建筑标准配置</span>
+            <span class="sep"></span>
+            <span class="layer dim">—</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="width:56px;flex:0 0 56px;font-size:10.5px;color:var(--yb-text-faint)">切层 flash</span>
+          <div class="cap29" style="background:#1E2A44F2;border-color:var(--yb-accent-line)">
+            <span class="dot ok"></span>
+            <span class="t" style="margin-left:8px">已启用</span>
+            <span class="sep" style="margin-left:7px"></span>
+            <span class="pchip">建筑标准配置</span>
+            <span class="sep"></span>
+            <span class="layer" style="color:var(--yb-accent-ink)">E-04 造型线</span>
+          </div>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:16px">
+        配置芯片高 22 / 圆角 4 / 悬停白 8%（鼠标移上去可见）；右侧图标按钮 20×20。停用态不显示当前层名——
+        显示一个不生效的层名是误导。
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ 07 · 右键圆盘 ============================ -->
+  <section class="sec" id="pie">
+    <div class="sec-hd"><span class="n">07</span><h2>右键圆盘 · 264 × 264</h2><span class="dim">单环 R0 52 / R1 110 · 扇区间隙 0.8 · 中心 hub 只读</span></div>
+    <p class="sec-desc">
+      纯 SVG，几何参数直接取自 <code>PieWindow.cs</code>（S_R0 52 / S_R1 110 / GapPx 0.8 / Pad 22）。
+      扇区不写描边层次，缝隙用 0.8px 底色描边表达；扇区数 = 当前类别的图层数（上限 16），
+      顺序 = 映射行里 chips 的拖动顺序，所以圆盘和面板永远是同一份数据。
+    </p>
+    <div>
+      <div class="cap"><b>圆盘 · 块类别（6 层）</b><span class="sz">264 × 264 · 6 扇区 · 中心 = 类别 + 当前层</span></div>
+      <div class="ab free" style="width:264px;height:264px">
+        <svg class="pie" viewBox="0 0 264 264" width="264" height="264" role="img"
+             aria-label="右键圆盘：6 个图层扇区（A-墙 / A-柱 / A-门窗 / A-楼梯 / A-楼板 / A-散水），中心显示当前 A-墙"
+             style="filter:drop-shadow(0 0 12px #00000080)">
+          <!-- 盘底 -->
+          <circle cx="132" cy="132" r="110" fill="var(--yb-surface)"/>
+          <!-- 扇区：6 × 60°，顺时针，起点 12 点方向（顺序 = chips 拖动顺序） -->
+          <path class="sec" d="M132,80 L132,22 A110,110 0 0 1 227.26,77 L177.03,106 A52,52 0 0 0 132,80 Z"/>
+          <path class="sec" d="M177.03,106 L227.26,77 A110,110 0 0 1 227.26,187 L177.03,158 A52,52 0 0 0 177.03,106 Z"/>
+          <path class="sec hot" d="M177.03,158 L227.26,187 A110,110 0 0 1 132,242 L132,184 A52,52 0 0 0 177.03,158 Z"/>
+          <path class="sec" d="M132,184 L132,242 A110,110 0 0 1 36.74,187 L86.97,158 A52,52 0 0 0 132,184 Z"/>
+          <path class="sec" d="M86.97,158 L36.74,187 A110,110 0 0 1 36.74,77 L86.97,106 A52,52 0 0 0 86.97,158 Z"/>
+          <path class="sec" d="M86.97,106 L36.74,77 A110,110 0 0 1 132,22 L132,80 A52,52 0 0 0 86.97,106 Z"/>
+
+          <!-- 扇区文字：图层名 12 / ACI 8.5 -->
+          <text class="lbl" x="172.5" y="58">A-墙</text><text class="aci" x="172.5" y="69">ACI 7</text>
+          <text class="lbl" x="213" y="128">A-柱</text><text class="aci" x="213" y="139">ACI 3</text>
+          <text class="lbl hot" x="172.5" y="198">A-门窗</text><text class="aci hot" x="172.5" y="209">ACI 4</text>
+          <text class="lbl" x="91.5" y="198">A-楼梯</text><text class="aci" x="91.5" y="209">ACI 2</text>
+          <text class="lbl" x="51" y="128">A-楼板</text><text class="aci" x="51" y="139">ACI 9</text>
+          <text class="lbl" x="91.5" y="58">A-散水</text><text class="aci" x="91.5" y="69">ACI 1</text>
+
+          <!-- 中心 hub R0-12 = 40：只读，点中心 = 取消 -->
+          <circle class="hubring" cx="132" cy="132" r="40"/>
+          <text class="hub1" x="132" y="119">当前</text>
+          <text class="hub2" x="132" y="135">A-墙</text>
+          <text class="hub3" x="132" y="149">松开左键应用</text>
+        </svg>
+      </div>
+      <p class="hint" style="margin-top:10px;max-width:520px">
+        「A-门窗」为悬停态：AccentSoft 填充 + AccentLine 描边 + 外发光 + 文字提亮到 AccentInk。
+        中心 hub 只读，点中心 = 取消；Esc 与点空白同样取消并闪「已取消」。一类最多 16 层，超过就不再追加扇区。
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ 08 · 红线与验收 ============================ -->
+  <section class="sec" id="redlines">
+    <div class="sec-hd"><span class="n">08</span><h2>一致性红线 与 验收自查</h2><span class="dim">01 §8 精选 10 条 · 01 §9 精选 7 条</span></div>
+    <div class="rl">
+      <div class="rl-box">
+        <h3>一致性红线 <span class="tag">禁止项 · 10 条</span></h3>
+        <ul>
+          <li><span class="idx">01</span><span><b>禁止出现 token 表外的颜色。</b>任何 <code>#RRGGBB</code> 必须能在 §2 查到名字；新增颜色只能进 <code>UiTheme</code> + 资源字典。</span></li>
+          <li><span class="idx">02</span><span><b>禁止渐变与纹理。</b>Linear/RadialGradientBrush、ImageBrush 一律不得用于底色与描边。</span></li>
+          <li><span class="idx">03</span><span><b>投影只允许 3 处：</b>屏幕胶囊（blur 10）、圆盘（blur 20）、圆盘悬停光晕（blur 22）。窗口内部零投影。</span></li>
+          <li><span class="idx">04</span><span><b>禁止实心蓝用于"选中"。</b>选中只能是 AccentSoft 底 + AccentLine 标记；实心 Accent 仅限主按钮 / 开关 on / 复选框选中 / 滑杆已选段。</span></li>
+          <li><span class="idx">05</span><span><b>禁止字体字形当图标</b>（⚙ ◐ ✕ ✓ ●），一律改 Path，画布 12 / 14 / 16。</span></li>
+          <li><span class="idx">06</span><span><b>禁止字号自由取值</b>：只有 8.5 / 10.5 / 11.5 / 12 / 13.5 / 20 六档，禁止局部覆盖 FontSize。</span></li>
+          <li><span class="idx">07</span><span><b>禁止控件尺寸自由取值</b>：高度只有 20/22/26/29/30/32/34/48；圆角只有 4/6/8/15。</span></li>
+          <li><span class="idx">08</span><span><b>禁止间距自由取值</b>：只有 2/4/6/8/10/14/18。出现 7/9/11/13/17/21 视为缺陷。</span></li>
+          <li><span class="idx">09</span><span><b>分类 chip 词条只能是图层名前缀原文。</b>禁止「建筑 / 结构 / 机电」这类语义分类；前缀 = 按 <code>-</code> <code>_</code> <code>.</code> 切第一段（1–8 字符，超长取前 3，统一大写），只有 ≥2 个图层才成组，<code>其他</code> 永远末位。</span></li>
+          <li><span class="idx">10</span><span><b>禁止把图层池折成 <code>+N</code> 浮层 / 横向滚动 / hover 才出现的 ＋。</b>≥2 层一律「摘要行 → 行内展开」，chips 必须换行、行高必须变高。</span></li>
+        </ul>
+      </div>
+
+      <div class="rl-box">
+        <h3>验收自查 <span class="tag">本稿已过 · 7 条</span></h3>
+        <ul>
+          <li><span class="ok"></span><span><b>标题栏</b>高 48，左侧 3px 状态条高度满 48，颜色符合状态映射（绿 / 橙 / 灰 / 导航蓝）。</span></li>
+          <li><span class="ok"></span><span><b>图标按钮</b> 26×26、间距 2、图标 14；关闭按钮 32×48 贴右缘。</span></li>
+          <li><span class="ok"></span><span><b>内边距</b>所有窗口左右 18；分组间距 14；表头与字段标签用 TextDim（不是 TextFaint）。</span></li>
+          <li><span class="ok"></span><span><b>主按钮</b>每窗最多 1 个；并排的两个按钮等高（都是 32），独占时 34。</span></li>
+          <li><span class="ok"></span><span><b>列表行</b>高 28（映射行 26），悬停 HoverRow，选中 SelectionBg + 左缘 2px，末行不画分隔线。</span></li>
+          <li><span class="ok"></span><span><b>旧色清零</b>01 §9-19 列出的 10 个旧色值在本稿里只出现于「改造前」对照区与旧→新标注表，其余 artboard 一次都没有。</span></li>
+          <li><span class="ok"></span><span><b>图层池三形态</b>0 层只有「＋ 选图层」；1 层是 chip + 常驻「＋ 再加一层」；6 层是摘要「6 层 · A-墙」+ 行尾 ＋，展开后 6 个 chip 换行成 2 行、行高变高、后续行被推下；16 层时 ＋ 置灰并挂 tooltip。</span></li>
+        </ul>
+        <p class="hint" style="margin-top:14px">
+          图层色块（12×12 / 8×8）取的是 ACI 调色板真实值（CAD 数据，不是 UI 主题色）；
+          ACI 7（白）与灰阶色块统一加 1px 内描边，避免在深色底上消失。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 09 · 防呆与漏画状态 ============================ -->
+  <section class="sec" id="poka">
+    <div class="sec-hd"><span class="n">09</span><h2>防呆设计 与 漏画状态盘点</h2><span class="dim">只补画代码里已经存在的失败分支 · 不新增功能、不改原逻辑</span></div>
+    <p class="sec-desc">
+      这套插件的设计理念从源码里能读出来：<b style="color:var(--yb-text)">余光可见</b>（胶囊条 / 3px 状态条）、
+      <b style="color:var(--yb-text)">手不离光标</b>（圆盘）、<b style="color:var(--yb-text)">一次配好长期复用</b>（配置）、
+      <b style="color:var(--yb-text)">不打断命令流</b>（高频操作零确认），以及最硬的一条——
+      <b style="color:var(--yb-text)">失败必须出声</b>（代码注释原话：「存不进去就不能装作存好了，否则改动静默消失，用户还以为存上了」）。
+      所以本节的全部内容都是<b style="color:var(--yb-text)">把这些已经写好的分支画出来</b>：不新增确认框、不新增开关、不替换控件。
+      防呆 ≠ 多加弹窗；防呆是「不可逆要有名字和数量」「静默要有话说」「入口要常驻」「当前状态要余光可见」。
+    </p>
+
+    <div class="ab yb" style="padding:16px 18px 18px">
+      <div class="fk-band-hd">先认账：这轮设计稿删过 / 编过什么</div>
+      <div class="fk-band-desc">判定标准只有一条：原来的功能优于被删后的形态，就恢复；只有证据表明原功能本身会出错，才保持移除并写清理由。</div>
+      <table class="fk-tb">
+        <tr><th>项</th><th>判定</th><th>依据 / 处理</th></tr>
+        <tr><td>CC 标题栏「打开主面板」（V1.0 的 ⚙）</td><td class="yes">已恢复</td><td>这是 CC → 主面板的唯一捷径，删掉是净损失。误点风险靠「与 ✕ 拉开 12 净空 + tooltip『打开主面板（QH）』」解决，不靠删按钮；图标只做风格统一（⚙ → 窗口 + 箭头），功能不变。见 03 节改造后。</td></tr>
+        <tr><td>设置窗口的三个「新开关」（扇区悬停高亮 / 显示胶囊条 / 应用后闪现）</td><td class="no">本轮删除</td><td>全工程搜不到这些设置项，是设计稿凭空编的。已改回 V1.0 真实控件：点击录制快捷键框、触发方式四选一分段单选、长按时长滑杆、取消 + 保存。见 05 节。</td></tr>
+        <tr><td>CC 列表的「最近使用 / 全部图层」分组标题行</td><td>保持移除，功能保留</td><td>标题行能被 ↑↓ 聚焦、同名图层出现两次是真实缺陷；「最近」这项功能没删，已改为列表上方的常驻横向快捷行（不进列表、不抢键盘游标）。</td></tr>
+        <tr><td>「完成 / 确定」与「取消」并列的三按钮</td><td>保持移除</td><td>三个按钮语义重叠；底部收敛成一个主操作，文案本身就是结果预览。</td></tr>
+        <tr><td>◐ 主题切换</td><td class="no">待定，未擅自恢复</td><td>源码 <code>ApplyTheme</code> 只作用 CC 一个窗口，恢复它等于恢复「一套插件两套皮肤」。要么做成全插件联动（需补齐浅色 token 表），要么维持单一深色——这是产品决策，留给用户拍板，不私自删也不私自加。</td></tr>
+        <tr><td>配置区 ⋯ 菜单 / 映射行 +N 浮层 / hover 才出现的 ＋ / 手打分号下拉</td><td class="yes">已全部恢复</td><td>前几轮已改回 V1.0：四个并列图标、摘要-行内展开、常驻 ＋、可编辑 <code>PoolText</code> 下拉。</td></tr>
+      </table>
+    </div>
+
+    <div class="fk-band">
+      <div class="fk-band-hd">A · 不可逆动作：给名字、给数量、给出路</div>
+      <div class="fk-band-desc">删一整套配置、关窗丢改动、删掉最后一个图层——这三类一旦静默发生，用户要到画错之后才发现。</div>
+      <div class="fk-grid">
+        <div class="fk-card">
+          <h4><span class="tagx">A1</span>写盘失败：默认不关窗</h4>
+          <div class="fk-mini"><span class="danger">没能保存</span><br>
+            配置写不进 AutoLayer.ini（可能被别的 CAD 实例或杀毒软件占用，也可能没有写入权限）。<span class="hi">关闭后，这次的改动会丢失。</span>
+            <div class="btnline"><span>留在面板</span><span>仍然关闭</span></div></div>
+          <p class="fk-cap"><b>触发</b> 点 X / Esc 时磁盘写不进去（<code>PanelWindow.OnClosing</code> 1243–1260）。<b>给什么</b> 默认不关 + 明写"改动会丢" + 具体文件名 + 一个明确的"仍然关闭"。<b>不动什么</b> 保存流程一行不改，只把已有分支画出来。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">A2</span>图层名不合法：当场改，不弹框</h4>
+          <div class="fk-mini"><span class="warn">「A/墙」含 CAD 不允许的字符</span><br>
+            不能出现 <span class="hi">&lt; &gt; / \ " : ? * | , =</span>；分号 <span class="hi">;</span> 是多个图层的分隔符，也不能出现在图层名里。改掉才能保存。
+            <div class="hr"></div><span class="hi">→ 面板保持打开，光标回到这一行</span></div>
+          <p class="fk-cap"><b>触发</b> 手打分号下拉里敲了非法名，关窗时被校验挡下（<code>TryFindInvalidName</code> 1246–1252）。<b>给什么</b> 提示行红字列出全部非法字符 + 面板不关。<b>不动什么</b> 不新增确认框——高频输入框里弹框会打断改字。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">A3</span>删配置：写清"一起删多少"</h4>
+          <div class="fk-mini"><span class="danger">删除配置「建筑标准配置」？</span><br>
+            这个配置里的 <span class="hi">12 项映射</span>会一起删除，<span class="danger">无法撤销</span>。
+            <div class="hr"></div><span class="hi">仅剩 1 个配置时，删除按钮置灰</span>：至少要保留一个配置。
+            <div class="btnline"><span>取消</span><span class="pri">删除配置</span></div></div>
+          <p class="fk-cap"><b>触发</b> 点配置区最右的红色 🗑（<code>BtnDelete.IsEnabled = Profiles.Count &gt; 1</code>）。<b>给什么</b> 标题写配置名、正文写映射条数与"无法撤销"、仅剩一个时直接禁用。<b>不动什么</b> 四图标并列的结构不变，防误点靠常显红 + 分隔线。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">A4</span>删掉最后一个 chip：留撤销</h4>
+          <div class="fk-mini"><span class="hi">设备</span>　<span class="warn">未设置 · 待配置</span>　<span class="hi">＋ 选图层</span>
+            <div class="hr"></div>已删除「X-设备」　<span class="ok">撤销（5s）</span>　·　<span class="hi">Ctrl+Z</span> 可继续回退，直到保存 / 关窗</div>
+          <p class="fk-cap"><b>触发</b> 在展开态点 chip 的 ×，且这是该类别最后一层。<b>给什么</b> 行回到"未设置 / 待配置"而<b>不删整行</b>、就地撤销条 5 秒、<code>Ctrl+Z</code> 多级回退。<b>不动什么</b> 删除入口仍然只有行内 × 一处。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="fk-band">
+      <div class="fk-band-hd">B · 静默失败：让"没发生"也有话说</div>
+      <div class="fk-band-desc">圆盘不弹、图层缺失、图层关闭、切配置——这些都不会报错，但用户会白等、白找、或误以为改动丢了。</div>
+      <div class="fk-grid">
+        <div class="fk-card">
+          <h4><span class="tagx">B1</span>圆盘没弹：三种原因各一句</h4>
+          <div class="fk-mini"><span class="hi">胶囊条 Flash（1.8s）</span>
+            <div class="hr"></div>插件已停用 → <span class="warn">「已停用，圆盘没弹出」</span><br>
+            这一类不足 2 层 → <span class="warn">「圆盘：这一类的图层不足 2 个」</span><br>
+            构建失败 → <span class="warn">「圆盘弹出失败，ALTRACE 看原因」</span></div>
+          <p class="fk-cap"><b>触发</b> 长按右键但 <code>PieHost</code> 提前 return false。<b>给什么</b> 胶囊条上一句人话 + 一个能查的出路（ALTRACE）。<b>不动什么</b> 不弹 MessageBox、不改触发条件——高频路径零确认。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">B2</span>「缺失」不是错误，是"会自动建"</h4>
+          <div class="fk-mini"><span class="hi">A-门窗</span>　<span class="warn">缺失</span>
+            <div class="hr"></div>图纸里还没有这一层；<span class="hi">下一条命令会按配置里记的颜色自动新建</span>（<code>AutoCreateLayer</code> 默认开启）。
+            <div class="hr"></div><span class="warn">若在 ini 里关掉自动新建，这一行才会真的落空</span></div>
+          <p class="fk-cap"><b>触发</b> 状态列出现「缺失」（<code>Layers.Ensure</code> / <code>Config.AutoCreateLayer</code>）。<b>给什么</b> tooltip 说明后果，而不是只写"图纸里没有这个图层"。<b>不动什么</b> 状态词、<code>Warn</code> 配色、chip 保留不删，全不动。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">B3</span>目标层已关闭 / 已冻结</h4>
+          <div class="fk-mini"><span class="hi">E-04 造型线</span>　<span class="warn">已关闭</span>
+            <div class="hr"></div>应用时会自动打开，并在结果里说明「已自动打开该图层」。
+            <div class="hr"></div><span class="hi">不中途弹 Yes/No</span>——不打断正在进行的归层流程。</div>
+          <p class="fk-cap"><b>触发</b> 在 CC 里选了一个状态为「已关闭」的图层。<b>给什么</b> 行内 tooltip + 应用后的一句结果说明。<b>不动什么</b> 原来是中途 MessageBox，稿子里改成内联提示，不新增第二个确认。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">B4</span>切配置 = 连未存盘改动一起存走</h4>
+          <div class="fk-mini"><span class="hi">建筑标准配置 ▾</span>　→　<span class="hi">机电点位配置</span>
+            <div class="hr"></div>切换时会把当前面板的改动<b class="hi">先收进旧配置并写盘</b>；<span class="warn">切换不等于"放弃改动"</span>。</div>
+          <p class="fk-cap"><b>触发</b> 有未存盘映射改动时切配置（<code>CmbProfile_SelectionChanged</code> 1126–1131 先 <code>CaptureIntoProfile</code> 再 <code>Save</code>）。<b>给什么</b> 下拉 tooltip 一句话讲明。<b>不动什么</b> 不新增"是否保存改动?"确认框——切配置是操作层动作，必须零确认。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="fk-band">
+      <div class="fk-band-hd">C · 原来就有，但设计稿一直没画</div>
+      <div class="fk-band-desc">这两件不是新功能，是 V1.0 里已经在跑、却从来没进过静态稿的状态。</div>
+      <div class="fk-grid">
+        <div class="fk-card">
+          <h4><span class="tagx">C1</span>首次使用 / 空图纸引导</h4>
+          <div class="fk-mini"><span class="warn">还没配置过图层，先填一行</span>
+            <div class="hr"></div>标题栏黄色提示条 + 8 行里每一行的 <span class="hi">＋ 选图层</span> 常驻；
+            <div class="hr"></div>图纸里一个自定义图层都没有时，选择图层弹窗给「新建图层名」出路，<span class="hi">不给一块静默空白</span>。</div>
+          <p class="fk-cap"><b>触发</b> 首次打开主面板 / 打开一张新图纸。<b>给什么</b> 一句话目标 + 一个明确的第一动作。<b>不动什么</b> 不新增向导页、不改配置默认值。</p>
+        </div>
+        <div class="fk-card">
+          <h4><span class="tagx">C2</span>配置下拉里拖拽排序</h4>
+          <div class="fk-mini"><span class="hi">▤ 建筑标准配置</span>　<span class="hi">▤ 结构出图配置</span>　<span class="hi">▤ 机电点位配置</span>
+            <div class="hr"></div>按住一条、拖到目标位置、松手，列表当场重排并存盘；<span class="hi">顺序即胶囊条点配置名的轮转顺序</span>。</div>
+          <p class="fk-cap"><b>触发</b> 在配置下拉的展开列表里按住拖动（<code>PanelWindow.xaml.cs</code> 1263 起，不用系统 OLE 拖放：Popup 是独立 HWND，落点注册不到）。<b>给什么</b> 静态稿补一个拖拽把手与插入位提示。<b>不动什么</b> 不在框外加箭头按钮——用户当年就否过"箭头怎么在外面"。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="margin-top:56px;padding-top:20px;border-top:1px solid var(--yb-line);
+                 display:flex;justify-content:space-between;gap:24px;font-size:10.5px;color:var(--yb-text-faint)">
+    <span>Y_图层工具箱 V1.0 · 静态高保真视觉稿 · 单文件 · 零外部依赖（无 CDN / 无外部字体 / 无图片）</span>
+    <span>规范来源：01-visual-spec.md（视觉） · 02-ux-spec.md（交互与信息架构）</span>
+  </footer>
+
+</div>
+<script>
+/* 交互只做三件事：chip 单选、开关切换、搜索框过滤（含空态与清除按钮）。
+   真状态（hover/active/focus）全部由 CSS 伪类承担，脚本只补"点击后需要记住"的态。 */
+(function(){
+  var d=document;
+  d.addEventListener('click',function(e){
+    var t=e.target;
+    var chip=t.closest('[data-chip]');
+    if(chip){
+      var g=chip.closest('[data-chipgroup]');
+      if(g){g.querySelectorAll('[data-chip]').forEach(function(c){c.classList.remove('sel');c.setAttribute('aria-selected','false');});
+        chip.classList.add('sel');chip.setAttribute('aria-selected','true');}
+      return;
+    }
+    var sw=t.closest('[data-switch]');
+    if(sw){sw.classList.toggle('on');sw.setAttribute('aria-checked',sw.classList.contains('on')?'true':'false');return;}
+    var ck=t.closest('[data-check]');
+    if(ck){ck.classList.toggle('checked');return;}
+    var clr=t.closest('[data-clear]');
+    if(clr){
+      var inp=d.getElementById(clr.getAttribute('data-clear'));
+      if(inp){inp.value='';inp.dispatchEvent(new Event('input'));inp.focus();}
+      return;
+    }
+  });
+  d.addEventListener('input',function(e){
+    var inp=e.target.closest('[data-filter]');
+    if(!inp)return;
+    var list=d.getElementById(inp.getAttribute('data-filter'));
+    var q=inp.value.trim().toLowerCase(),hit=0;
+    if(list){
+      list.querySelectorAll('[data-row]').forEach(function(r){
+        var ok=!q||r.getAttribute('data-row').toLowerCase().indexOf(q)>-1;
+        r.style.display=ok?'':'none';
+        if(ok)hit++;
+      });
+    }
+    var empty=d.getElementById('cc-empty');
+    if(empty)empty.style.display=hit?'none':'flex';
+    var clr=d.getElementById('cc-clear');
+    if(clr)clr.style.display=inp.value?'grid':'none';
+  });
+})();
+</script>
+</body>
+</html>

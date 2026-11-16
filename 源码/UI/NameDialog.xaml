@@ -1,0 +1,168 @@
+﻿<Window x:Class="AutoLayer.UI.NameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="配置名称"
+        Width="360" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI, Microsoft YaHei UI"
+        FontSize="12"
+        Background="{DynamicResource Yb.BgDeep}"
+        Foreground="{DynamicResource Yb.Text}"
+        UseLayoutRounding="True">
+
+  <Window.Resources>
+    <!-- §2 Token：与 UiTheme.cs 同一套值；红线 1 —— XAML 里不许再出现裸色值 -->
+    <SolidColorBrush x:Key="Yb.BgDeep" Color="#141519"/>
+    <SolidColorBrush x:Key="Yb.Surface" Color="#202128"/>
+    <SolidColorBrush x:Key="Yb.Raised" Color="#26282F"/>
+    <SolidColorBrush x:Key="Yb.Sunken" Color="#1A1B20"/>
+    <SolidColorBrush x:Key="Yb.Line" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.LineStrong" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.LineControl" Color="#66FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.LineHover" Color="#80FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.Text" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="Yb.TextDim" Color="#98A0AC"/>
+    <SolidColorBrush x:Key="Yb.TextFaint" Color="#8A93A0"/>
+    <SolidColorBrush x:Key="Yb.Accent" Color="#2563EB"/>
+    <SolidColorBrush x:Key="Yb.AccentHi" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="Yb.AccentLo" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="Yb.AccentLine" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="Yb.AccentSoft" Color="#1E2A44"/>
+    <SolidColorBrush x:Key="Yb.AccentInk" Color="#DBEAFE"/>
+    <SolidColorBrush x:Key="Yb.Ok" Color="#34D399"/>
+    <SolidColorBrush x:Key="Yb.Warn" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="Yb.WarnSoft" Color="#2F2517"/>
+    <SolidColorBrush x:Key="Yb.WarnLine" Color="#4C3716"/>
+    <SolidColorBrush x:Key="Yb.Danger" Color="#F87171"/>
+    <SolidColorBrush x:Key="Yb.DangerSoft" Color="#2A1A1C"/>
+    <SolidColorBrush x:Key="Yb.DangerLine" Color="#4D3A3C"/>
+    <SolidColorBrush x:Key="Yb.DangerSolid" Color="#DC2626"/>
+    <SolidColorBrush x:Key="Yb.DangerSolidLo" Color="#B91C1C"/>
+    <SolidColorBrush x:Key="Yb.Hover" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.HoverRow" Color="#0FFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.Pressed" Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.SelectionBg" Color="#1E2A44"/>
+    <SolidColorBrush x:Key="Yb.SelectionMark" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="Yb.Track" Color="#2E313A"/>
+    <SolidColorBrush x:Key="Yb.SwitchTrack" Color="#3A3D45"/>
+    <SolidColorBrush x:Key="Yb.SwitchKnob" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="Yb.TextOnAccent" Color="#FFFFFF"/>
+
+    <Style x:Key="GhostButton" TargetType="Button">
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Padding" Value="16,0"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                    CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.LineHover}"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Pressed}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Padding" Value="16,0"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.TextOnAccent}"/>
+      <Setter Property="Background" Value="{StaticResource Yb.Accent}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.Accent}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                    CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.AccentHi}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.AccentLo}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="DarkTextBox" TargetType="TextBox">
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Background" Value="{StaticResource Yb.Raised}"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CaretBrush" Value="{StaticResource Yb.AccentLine}"/>
+      <Setter Property="Padding" Value="9,0"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="6">
+              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+                            VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.LineHover}"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+  </Window.Resources>
+
+  <StackPanel Margin="20">
+    <TextBlock x:Name="TxtLabel" Text="配置名称" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource Yb.Text}"/>
+
+    <TextBox x:Name="TxtName" Margin="0,10,0,0" Style="{StaticResource DarkTextBox}"
+             TextChanged="TxtName_TextChanged"/>
+
+    <TextBlock x:Name="TxtErr" Margin="0,8,0,0" Foreground="{StaticResource Yb.Danger}" FontSize="11.5"
+               TextWrapping="Wrap" Visibility="Collapsed"/>
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+      <Button Content="取消" IsCancel="True" Padding="18,0"
+              Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+      <Button x:Name="BtnOk" Content="确定" IsDefault="True" Padding="18,0"
+              Style="{StaticResource PrimaryButton}" Click="BtnOk_Click"/>
+    </StackPanel>
+  </StackPanel>
+</Window>

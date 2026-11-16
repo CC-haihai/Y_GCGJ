@@ -1,0 +1,804 @@
+﻿<Window x:Class="AutoLayer.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="设置"
+        Width="580" Height="480"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        FontFamily="Segoe UI, Microsoft YaHei UI"
+        FontSize="12"
+        Background="{DynamicResource Yb.BgDeep}"
+        Foreground="{DynamicResource Yb.Text}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+  <!-- 配色与 UiTheme.cs 是同一套，改一处必须同步那边 -->
+  <Window.Resources>
+    <!-- §2 Token：与 UiTheme.cs 同一套值；红线 1 —— XAML 里不许再出现裸色值 -->
+    <SolidColorBrush x:Key="Yb.BgDeep" Color="#141519"/>
+    <SolidColorBrush x:Key="Yb.Surface" Color="#202128"/>
+    <SolidColorBrush x:Key="Yb.Raised" Color="#26282F"/>
+    <SolidColorBrush x:Key="Yb.Sunken" Color="#1A1B20"/>
+    <!-- 二维码底色：码必须白底黑块，不能反色，所以这里单独留一个纸白 -->
+    <SolidColorBrush x:Key="Yb.Paper" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.Line" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.LineStrong" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.LineControl" Color="#66FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.LineHover" Color="#80FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.Text" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="Yb.TextDim" Color="#98A0AC"/>
+    <SolidColorBrush x:Key="Yb.TextFaint" Color="#8A93A0"/>
+    <SolidColorBrush x:Key="Yb.Accent" Color="#2563EB"/>
+    <SolidColorBrush x:Key="Yb.AccentHi" Color="#3B82F6"/>
+    <SolidColorBrush x:Key="Yb.AccentLo" Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="Yb.AccentLine" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="Yb.AccentSoft" Color="#1E2A44"/>
+    <SolidColorBrush x:Key="Yb.AccentInk" Color="#DBEAFE"/>
+    <SolidColorBrush x:Key="Yb.Ok" Color="#34D399"/>
+    <SolidColorBrush x:Key="Yb.Warn" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="Yb.WarnSoft" Color="#2F2517"/>
+    <SolidColorBrush x:Key="Yb.WarnLine" Color="#4C3716"/>
+    <SolidColorBrush x:Key="Yb.Danger" Color="#F87171"/>
+    <SolidColorBrush x:Key="Yb.DangerSoft" Color="#2A1A1C"/>
+    <SolidColorBrush x:Key="Yb.DangerLine" Color="#4D3A3C"/>
+    <SolidColorBrush x:Key="Yb.DangerSolid" Color="#DC2626"/>
+    <SolidColorBrush x:Key="Yb.DangerSolidLo" Color="#B91C1C"/>
+    <SolidColorBrush x:Key="Yb.Hover" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.HoverRow" Color="#0FFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.Pressed" Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.SelectionBg" Color="#1E2A44"/>
+    <SolidColorBrush x:Key="Yb.SelectionMark" Color="#60A5FA"/>
+    <SolidColorBrush x:Key="Yb.Track" Color="#2E313A"/>
+    <SolidColorBrush x:Key="Yb.ScrollThumb" Color="#4DFFFFFF"/>
+    <SolidColorBrush x:Key="Yb.ScrollThumbHover" Color="#66FFFFFF"/>
+    <SolidColorBrush x:Key="Yb.SwitchTrack" Color="#3A3D45"/>
+    <SolidColorBrush x:Key="Yb.SwitchKnob" Color="#F1F5F9"/>
+    <SolidColorBrush x:Key="Yb.TextOnAccent" Color="#FFFFFF"/>
+
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Padding" Value="18,0"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.TextOnAccent}"/>
+      <Setter Property="Background" Value="{StaticResource Yb.Accent}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.Accent}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.AccentHi}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.AccentLo}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="GhostButton" TargetType="Button">
+      <Setter Property="Height" Value="32"/>
+      <Setter Property="Padding" Value="16,0"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="6">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="{TemplateBinding Padding}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.LineHover}"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Pressed}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 输入框 ============ -->
+    <Style x:Key="DarkBox" TargetType="TextBox">
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="Padding" Value="9,0"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+      <Setter Property="Background" Value="{StaticResource Yb.Raised}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CaretBrush" Value="{StaticResource Yb.AccentLine}"/>
+      <Setter Property="SelectionBrush" Value="{StaticResource Yb.Accent}"/>
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="TextBox">
+            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+                            VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.LineHover}"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 下拉框（和视口面板的 DarkCombo 同一套观感） ============ -->
+    <Style x:Key="DarkCombo" TargetType="ComboBox">
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Grid>
+              <ToggleButton x:Name="tb" Focusable="False" ClickMode="Press"
+                            IsChecked="{Binding IsDropDownOpen, Mode=TwoWay,
+                                        RelativeSource={RelativeSource TemplatedParent}}">
+                <ToggleButton.Template>
+                  <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="{StaticResource Yb.Sunken}"
+                            BorderBrush="{StaticResource Yb.LineControl}"
+                            BorderThickness="1" CornerRadius="6">
+                      <Grid>
+                        <ContentPresenter Margin="9,0,26,0" VerticalAlignment="Center"
+                                          TextElement.Foreground="{StaticResource Yb.Text}"
+                                          Content="{Binding SelectionBoxItem,
+                                                    RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                        <Path HorizontalAlignment="Right" VerticalAlignment="Center"
+                              Margin="0,0,10,0" Data="M0,0 L9,0 L4.5,5.5 Z"
+                              Fill="{StaticResource Yb.TextDim}" />
+                      </Grid>
+                    </Border>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True"
+                     Focusable="False" IsOpen="{TemplateBinding IsDropDownOpen}">
+                <Border Background="{StaticResource Yb.Raised}"
+                        BorderBrush="{StaticResource Yb.LineStrong}" BorderThickness="1"
+                        CornerRadius="8" Margin="0,2,0,0" MaxHeight="220"
+                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ComboBox}}">
+                  <ScrollViewer>
+                    <ItemsPresenter />
+                  </ScrollViewer>
+                </Border>
+              </Popup>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+      <Setter Property="Padding" Value="9,6"/>
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBoxItem">
+            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+              <ContentPresenter TextElement.Foreground="{StaticResource Yb.Text}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.Hover}"/>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Yb.SelectionBg}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 页签（下划线式，和主面板任务 Tab 同一套观感） ============ -->
+    <Style x:Key="PageTab" TargetType="RadioButton">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="Margin" Value="0,0,2,0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="Bd" Background="Transparent" BorderThickness="0,0,0,2"
+                    BorderBrush="Transparent" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                TextElement.Foreground="{TemplateBinding Foreground}"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+              </Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource Yb.AccentLine}"/>
+                <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 快捷键框 ============
+         点一下进入抓键状态（边框变蓝），按组合键录进来。
+         清空靠 Backspace / Delete —— 表格里每行再挂一个「清除」按钮会把四列挤爆。 -->
+    <Style x:Key="KeyField" TargetType="Border">
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Yb.LineControl}"/>
+      <Setter Property="Background" Value="{StaticResource Yb.Raised}"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="BorderBrush" Value="{StaticResource Yb.LineHover}"/>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
+
+    <!-- ============ 滑杆 ============
+         默认 WPF 滑杆是白底浅灰轨道，压在深色窗口上像贴纸。
+         这里只留一条 4px 轨道 + 一个圆钮：轨道被"已选中"那半段填成蓝色，
+         靠 DecreaseRepeatButton 自带的那块 Border 表现，不需要额外绑定。 -->
+    <Style x:Key="DarkSlider" TargetType="Slider">
+      <Setter Property="Height" Value="22"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Slider">
+            <Grid VerticalAlignment="Center">
+              <Border Height="4" CornerRadius="2" Background="{StaticResource Yb.Track}"/>
+              <Track x:Name="PART_Track">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
+                    <RepeatButton.Template>
+                      <ControlTemplate TargetType="RepeatButton">
+                        <Border Height="4" CornerRadius="2" Background="{StaticResource Yb.Accent}"/>
+                      </ControlTemplate>
+                    </RepeatButton.Template>
+                  </RepeatButton>
+                </Track.DecreaseRepeatButton>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Command="Slider.IncreaseLarge" Focusable="False">
+                    <RepeatButton.Template>
+                      <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent"/>
+                      </ControlTemplate>
+                    </RepeatButton.Template>
+                  </RepeatButton>
+                </Track.IncreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb Width="13" Height="13">
+                    <Thumb.Template>
+                      <ControlTemplate TargetType="Thumb">
+                        <Ellipse Fill="{StaticResource Yb.TextOnAccent}" Stroke="{StaticResource Yb.AccentLine}" StrokeThickness="1.2"/>
+                      </ControlTemplate>
+                    </Thumb.Template>
+                  </Thumb>
+                </Track.Thumb>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 深色滚动条 ============
+         帮助页要滚，系统默认那条浅灰槽压在深底上像贴了块白补丁。 -->
+    <Style TargetType="ScrollBar">
+      <Setter Property="Width" Value="8"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Grid Background="Transparent">
+              <Track x:Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="False"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb>
+                    <Thumb.Template>
+                      <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="Tb" CornerRadius="3" Margin="2,2"
+                                Background="{StaticResource Yb.ScrollThumb}"/>
+                        <ControlTemplate.Triggers>
+                          <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Tb" Property="Background"
+                                    Value="{StaticResource Yb.ScrollThumbHover}"/>
+                          </Trigger>
+                        </ControlTemplate.Triggers>
+                      </ControlTemplate>
+                    </Thumb.Template>
+                  </Thumb>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="False"/>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============ 帮助页排版 ============ -->
+    <Style x:Key="HelpH" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.Text}"/>
+      <Setter Property="Margin" Value="0,18,0,7"/>
+    </Style>
+
+    <Style x:Key="HelpP" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.TextDim}"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="LineHeight" Value="19"/>
+      <Setter Property="Margin" Value="0,0,0,5"/>
+    </Style>
+
+    <Style x:Key="HelpKey" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11.5"/>
+      <Setter Property="Foreground" Value="{StaticResource Yb.AccentLine}"/>
+      <Setter Property="FontFamily" Value="Consolas, Microsoft YaHei UI"/>
+    </Style>
+
+  </Window.Resources>
+
+  <!-- 窗口高度固定：切「设置 / 帮助」两页不跳动，帮助页在内部滚动 -->
+  <Grid Margin="20,14,20,14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- ================= 页签 ================= -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal">
+      <RadioButton x:Name="PgSetup" Style="{StaticResource PageTab}" GroupName="MainPage"
+                   Content="设置" Checked="Tab_Changed"/>
+      <RadioButton x:Name="PgHelp" Style="{StaticResource PageTab}" GroupName="MainPage"
+                   Content="帮助" Checked="Tab_Changed"/>
+    </StackPanel>
+
+    <Border Grid.Row="1" Height="1" Background="{StaticResource Yb.Line}"/>
+
+    <!-- ================= 页 1 · 设置 ================= -->
+    <Grid x:Name="PaneSetup" Grid.Row="2" Margin="0,14,0,0">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- 一行一个功能：功能名 / 快捷键 / 命令 / 鼠标键。
+           这是整窗口的主结构 —— 用户是"想给圆盘配个键"，
+           不是"想给侧键配个功能"，所以主语必须是功能。 -->
+      <StackPanel Grid.Row="0">
+
+        <!-- 表头 -->
+        <Grid Height="20" Margin="0,0,0,4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="146"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="132"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="功能" FontSize="10.5" Foreground="{StaticResource Yb.TextFaint}" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="快捷键" FontSize="10.5" Foreground="{StaticResource Yb.TextFaint}"
+                     VerticalAlignment="Center" Margin="0,0,10,0"/>
+          <TextBlock Grid.Column="2" Text="命令" FontSize="10.5" Foreground="{StaticResource Yb.TextFaint}"
+                     VerticalAlignment="Center" Margin="0,0,10,0"/>
+          <TextBlock Grid.Column="3" Text="鼠标键" FontSize="10.5" Foreground="{StaticResource Yb.TextFaint}"
+                     VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- ===== 行 1 · 主面板 ===== -->
+        <Grid Height="40">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="146"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="132"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="主面板" FontSize="11.5" VerticalAlignment="Center"/>
+
+          <Border x:Name="KeyBox0" Grid.Column="1" Style="{StaticResource KeyField}" Margin="0,0,10,0"
+                  Tag="0" Focusable="True" MouseLeftButtonDown="KeyBox_Click"
+                  ToolTip="点一下，然后按下组合键。Backspace / Delete 清空，Esc 取消。">
+            <TextBlock x:Name="TxtKey0" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource Yb.Text}"/>
+          </Border>
+
+          <Grid Grid.Column="2" Margin="0,0,10,0">
+            <TextBox x:Name="TxtAlias" Style="{StaticResource DarkBox}" MaxLength="20"
+                     TextChanged="Alias_TextChanged"
+                     ToolTip="自定义命令名。留空 = 只用 QH。"/>
+            <TextBlock x:Name="PhAlias" Text="QH" IsHitTestVisible="False" Margin="10,0,0,0"
+                       VerticalAlignment="Center" FontSize="11.5"
+                       Foreground="{StaticResource Yb.TextFaint}"/>
+          </Grid>
+
+          <ComboBox x:Name="CmbMouse0" Grid.Column="3" Style="{StaticResource DarkCombo}"
+                    Tag="0" SelectionChanged="Mouse_Changed"
+                    ToolTip="用哪颗鼠标键打开主面板。一颗键只能绑一个功能。"/>
+        </Grid>
+
+        <!-- ===== 行 2 · 图层切换 ===== -->
+        <Grid Height="40">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="146"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="132"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="图层切换" FontSize="11.5" VerticalAlignment="Center"/>
+
+          <Border x:Name="KeyBox1" Grid.Column="1" Style="{StaticResource KeyField}" Margin="0,0,10,0"
+                  Tag="1" Focusable="True" MouseLeftButtonDown="KeyBox_Click"
+                  ToolTip="点一下，然后按下组合键。Backspace / Delete 清空，Esc 取消。">
+            <TextBlock x:Name="TxtKey1" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource Yb.Text}"/>
+          </Border>
+
+          <Grid Grid.Column="2" Margin="0,0,10,0">
+            <TextBox x:Name="TxtCcAlias" Style="{StaticResource DarkBox}" MaxLength="20"
+                     TextChanged="Alias_TextChanged"
+                     ToolTip="自定义命令名。留空 = 只用 CC。"/>
+            <TextBlock x:Name="PhCcAlias" Text="CC" IsHitTestVisible="False" Margin="10,0,0,0"
+                       VerticalAlignment="Center" FontSize="11.5"
+                       Foreground="{StaticResource Yb.TextFaint}"/>
+          </Grid>
+
+          <ComboBox x:Name="CmbMouse1" Grid.Column="3" Style="{StaticResource DarkCombo}"
+                    Tag="1" SelectionChanged="Mouse_Changed"
+                    ToolTip="用哪颗鼠标键打开图层切换。一颗键只能绑一个功能。"/>
+        </Grid>
+
+        <!-- ===== 行 3 · 视口工具 ===== -->
+        <Grid Height="40">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="146"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="132"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="视口工具" FontSize="11.5" VerticalAlignment="Center"/>
+
+          <Border x:Name="KeyBox2" Grid.Column="1" Style="{StaticResource KeyField}" Margin="0,0,10,0"
+                  Tag="2" Focusable="True" MouseLeftButtonDown="KeyBox_Click"
+                  ToolTip="点一下，然后按下组合键。Backspace / Delete 清空，Esc 取消。">
+            <TextBlock x:Name="TxtKey2" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource Yb.Text}"/>
+          </Border>
+
+          <Grid Grid.Column="2" Margin="0,0,10,0">
+            <TextBox x:Name="TxtVpAlias" Style="{StaticResource DarkBox}" MaxLength="20"
+                     TextChanged="Alias_TextChanged"
+                     ToolTip="自定义命令名。留空 = 只用 VPT。"/>
+            <TextBlock x:Name="PhVpAlias" Text="VPT" IsHitTestVisible="False" Margin="10,0,0,0"
+                       VerticalAlignment="Center" FontSize="11.5"
+                       Foreground="{StaticResource Yb.TextFaint}"/>
+          </Grid>
+
+          <ComboBox x:Name="CmbMouse2" Grid.Column="3" Style="{StaticResource DarkCombo}"
+                    Tag="2" SelectionChanged="Mouse_Changed"
+                    ToolTip="用哪颗鼠标键打开视口工具。一颗键只能绑一个功能。"/>
+        </Grid>
+
+        <!-- ===== 行 4 · 圆盘 ===== -->
+        <Grid Height="40">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="146"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="132"/>
+          </Grid.ColumnDefinitions>
+
+          <TextBlock Text="圆盘" FontSize="11.5" VerticalAlignment="Center"/>
+
+          <Border x:Name="KeyBox3" Grid.Column="1" Style="{StaticResource KeyField}" Margin="0,0,10,0"
+                  Tag="3" Focusable="True" MouseLeftButtonDown="KeyBox_Click"
+                  ToolTip="点一下，然后按下组合键。Backspace / Delete 清空，Esc 取消。">
+            <TextBlock x:Name="TxtKey3" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="{DynamicResource Yb.Text}"/>
+          </Border>
+
+          <Grid Grid.Column="2" Margin="0,0,10,0">
+            <TextBox x:Name="TxtPieAlias" Style="{StaticResource DarkBox}" MaxLength="20"
+                     TextChanged="Alias_TextChanged"
+                     ToolTip="自定义命令名。留空 = 只用 ALPIE。"/>
+            <TextBlock x:Name="PhPieAlias" Text="ALPIE" IsHitTestVisible="False" Margin="10,0,0,0"
+                       VerticalAlignment="Center" FontSize="11.5"
+                       Foreground="{StaticResource Yb.TextFaint}"/>
+          </Grid>
+
+          <ComboBox x:Name="CmbMouse3" Grid.Column="3" Style="{StaticResource DarkCombo}"
+                    Tag="3" SelectionChanged="Mouse_Changed"
+                    ToolTip="用哪颗鼠标键打开圆盘。一颗键只能绑一个功能。"/>
+        </Grid>
+
+        <!-- ===== 右键长按阈值 =====
+             只对"右键长按"这一种触发方式有意义，所以单独一行、不挂在某一行功能上：
+             圆盘可能绑侧键，视口也可能绑右键，跟着行走反而说不清。 -->
+        <Grid Height="34" Margin="0,8,0,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="146"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="132"/>
+          </Grid.ColumnDefinitions>
+          <TextBlock Text="右键长按阈值" FontSize="11.5" Foreground="{StaticResource Yb.TextDim}"
+                     VerticalAlignment="Center"/>
+          <Slider x:Name="SldHold" Grid.Column="1" Style="{StaticResource DarkSlider}"
+                  Minimum="100" Maximum="800" SmallChange="10" LargeChange="50"
+                  Value="180" Margin="0,0,10,0" ValueChanged="Hold_Changed"
+                  VerticalAlignment="Center"/>
+          <TextBlock x:Name="TxtHold" Grid.Column="2" FontSize="11.5" Margin="0,0,10,0"
+                     Foreground="{StaticResource Yb.TextDim}" VerticalAlignment="Center"
+                     Text="180 ms"/>
+        </Grid>
+      </StackPanel>
+
+      <!-- ================= 配置文件 ================= -->
+      <StackPanel Grid.Row="2">
+        <Border Height="1" Background="{StaticResource Yb.Line}" Margin="0,0,0,12"/>
+
+        <!-- 两个配置文件并排，名字直接分开叫：归层配置 / 视口配置。
+             格子里只显示文件名（一列放不下全路径，而且名字才是要区分的），
+             完整路径挂在 ToolTip 上。 -->
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="24"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Grid.Column="0">
+            <TextBlock Text="归层配置" FontSize="11.5" Foreground="{StaticResource Yb.TextDim}"/>
+            <TextBlock x:Name="TxtCfgPath" Margin="0,4,0,0" FontSize="10.5"
+                       Foreground="{StaticResource Yb.TextFaint}" TextTrimming="CharacterEllipsis"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Content="导出…" Style="{StaticResource GhostButton}" Height="30"
+                      Padding="12,0" Margin="0,0,8,0" Click="BtnExportConfig_Click"
+                      ToolTip="把映射表、开关、快捷键、命令名、鼠标绑定另存成一份 ini"/>
+              <Button Content="导入…" Style="{StaticResource GhostButton}" Height="30"
+                      Padding="12,0" Click="BtnImportConfig_Click"
+                      ToolTip="用一份 ini 整体替换归层配置，导入前自动备份"/>
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Grid.Column="2">
+            <TextBlock Text="视口配置" FontSize="11.5" Foreground="{StaticResource Yb.TextDim}"/>
+            <TextBlock x:Name="TxtVpPath" Margin="0,4,0,0" FontSize="10.5"
+                       Foreground="{StaticResource Yb.TextFaint}" TextTrimming="CharacterEllipsis"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Content="导出…" Style="{StaticResource GhostButton}" Height="30"
+                      Padding="12,0" Margin="0,0,8,0" Click="BtnVpExport_Click"
+                      ToolTip="把图框和视口状态另存成一份 ini"/>
+              <Button Content="导入…" Style="{StaticResource GhostButton}" Height="30"
+                      Padding="12,0" Click="BtnVpImport_Click"
+                      ToolTip="用一份 ini 整体替换视口配置，导入前自动备份"/>
+            </StackPanel>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock x:Name="TxtIoHint" Margin="0,8,0,0" FontSize="10.5" Foreground="{StaticResource Yb.TextFaint}"
+                   TextWrapping="Wrap" LineHeight="16" Visibility="Collapsed"/>
+        <TextBlock x:Name="TxtVpIoHint" Margin="0,8,0,0" FontSize="10.5" Foreground="{StaticResource Yb.TextFaint}"
+                   TextWrapping="Wrap" LineHeight="16" Visibility="Collapsed"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- ================= 页 2 · 帮助 ================= -->
+    <ScrollViewer x:Name="PaneHelp" Grid.Row="2" Margin="0,4,0,0" Visibility="Collapsed"
+                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="0,0,6,0">
+
+        <TextBlock Text="四个入口" Style="{StaticResource HelpH}" Margin="0,10,0,6"/>
+
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="86"/>
+            <ColumnDefinition Width="74"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="主面板" Style="{StaticResource HelpP}" Margin="0,0,0,4"/>
+          <TextBlock Grid.Row="0" Grid.Column="1" Text="QH" Style="{StaticResource HelpKey}" Margin="0,2,0,0"/>
+          <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource HelpP}" Margin="0,0,0,4"
+                     Text="刷层、批量归层、自动归层开关"/>
+
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="图层切换" Style="{StaticResource HelpP}" Margin="0,0,0,4"/>
+          <TextBlock Grid.Row="1" Grid.Column="1" Text="CC" Style="{StaticResource HelpKey}" Margin="0,2,0,0"/>
+          <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource HelpP}" Margin="0,0,0,4"
+                     Text="选中挪层；空手只切当前图层"/>
+
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="视口工具" Style="{StaticResource HelpP}" Margin="0,0,0,4"/>
+          <TextBlock Grid.Row="2" Grid.Column="1" Text="VPT" Style="{StaticResource HelpKey}" Margin="0,2,0,0"/>
+          <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource HelpP}" Margin="0,0,0,4"
+                     Text="视口状态、按图框批量出布局"/>
+
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="圆盘" Style="{StaticResource HelpP}" Margin="0,0,0,4"/>
+          <TextBlock Grid.Row="3" Grid.Column="1" Text="ALPIE" Style="{StaticResource HelpKey}" Margin="0,2,0,0"/>
+          <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource HelpP}" Margin="0,0,0,4"
+                     Text="光标处环形选层，松手确认"/>
+        </Grid>
+
+        <TextBlock Text="快捷键与鼠标键" Style="{StaticResource HelpH}"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="快捷键：点一下方框再按组合键，必须带 Ctrl 或 Alt（只按 Shift 会跟打字抢键，不收）。Backspace 清空，Esc 放弃本次录制。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="鼠标键：一颗键只绑一个功能，绑新的会把旧的顶掉。右键要按住到阈值才触发，短按照旧是 CAD 原生右键菜单，阈值可调 100–800 ms（默认 180）；侧键按下即触发，没有长按。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="命令行不空时一律不触发；鼠标键只在画图区生效，在面板和命令行上仍是原生菜单。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="命令名：QH / CC / VPT / ALPIE 固定有效，每行还能另起一个自定义名，两个同时生效，留空就只认内置的。只能用字母、数字、减号、下划线，不能和 CAD 自带命令或其他插件撞名，四个之间也不能重复。"/>
+
+        <TextBlock Text="视口工具（VPT）" Style="{StaticResource HelpH}"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="图框：批量生成页第一行「拾取图框」，点一个块或框选整组图框线；右边是「重框内框 / 改名 / 删除」。图框存在插件目录的 FrameLib.dwg，换任何图纸都能用。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="状态：在图纸里调好一个视口的冻结层，点「+ 刷取状态」记下来；列表里可改名 / 上下移 / 更新 / 删除，选中后「刷到视口」把这一套套给别的视口。名字对不上配置就点「对齐配置」，在面板里逐行挑，名字想往哪边改都行（跟配置 / 跟状态）。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="状态集：一个公司 / 项目一套，用状态列表左上角的下拉切换，同名状态互不干扰；下拉末尾能新建 / 改名 / 删除。刷取、批量生成、对齐、图层兜底都只认当前这一套。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="标记：外来图纸用「标记视口」把视口绑到某套配置，命令行 VLTAG / VLUNTAG / VLTAGS 等价（打 / 取消 / 体检）；标记存在图纸里，存盘才持久。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="自动切换：标记一次就生效，没有开关。图层兜底：没打标记时拿这个视口的冻结层去状态列表里反查，开关在「视口标记」页最下面。"/>
+
+        <TextBlock Text="配置文件" Style="{StaticResource HelpH}"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="归层配置 AutoLayer.ini：映射表、开关、快捷键、命令名、鼠标绑定。视口配置 ViewportState.ini：图框、视口状态（含状态集）。两个并排在「设置」页底部，各导各的，互不影响。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="导入是整体替换（不合并），立即生效；导入前自动把当前配置备份成「原文件名.导入前备份」，想反悔改回原名即可。"/>
+
+        <TextBlock Text="命令" Style="{StaticResource HelpH}"/>
+
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="196"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <TextBlock Grid.Row="0" Grid.Column="0" Text="ALSTATUS / ALKEY / ALMOUSE" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="自检：当前状态 / 快捷键卡在哪 / 鼠标键消息"/>
+
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="ALTRACE / ALEDIT" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="最近几次归层记录 / 在资源管理器里定位配置"/>
+
+          <TextBlock Grid.Row="2" Grid.Column="0" Text="ALON / ALOFF / ALTOGGLE" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="自动归层 开 / 关 / 来回切"/>
+
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="ALSET / CCHELP / VLHELP" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="本窗口 / 图层切换说明 / 视口工具说明"/>
+
+          <TextBlock Grid.Row="4" Grid.Column="0" Text="VLTAG / VLUNTAG / VLTAGS" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="视口标记 打 / 取消 / 列出并体检"/>
+
+          <TextBlock Grid.Row="5" Grid.Column="0" Text="VLALIGN" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="状态名与配置名对齐（命令行版，面板里有对齐浮层）"/>
+
+          <TextBlock Grid.Row="6" Grid.Column="0" Text="VLLIB" Style="{StaticResource HelpKey}" Margin="0,0,0,5"/>
+          <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource HelpP}"
+                     Text="批量导入一整个文件夹的图框 dwg"/>
+        </Grid>
+
+        <TextBlock Text="关于" Style="{StaticResource HelpH}"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="本工具为个人业余作品，仅作交流学习使用。不保证后续版本更新，也不对使用过程中产生的问题承担责任。"/>
+
+        <TextBlock Style="{StaticResource HelpP}"
+                   Text="问题反馈、获取新版，进 QQ 群：2166082781"/>
+
+        <Border Background="{StaticResource Yb.Surface}" CornerRadius="6" Padding="12,11,14,12"
+                Margin="0,4,0,4" BorderBrush="{StaticResource Yb.Line}" BorderThickness="1">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 微信赞赏码：白底黑块不能反色，160 见方便于手机扫 -->
+            <Border Width="160" Height="160" CornerRadius="5" Padding="7"
+                    Background="{StaticResource Yb.Paper}"
+                    BorderBrush="{StaticResource Yb.LineStrong}" BorderThickness="1">
+              <Image Source="donate.png" Stretch="Uniform"
+                     RenderOptions.BitmapScalingMode="HighQuality"/>
+            </Border>
+
+            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="如果它帮你省了点时间" FontSize="12.5"
+                         Foreground="{StaticResource Yb.Text}" Margin="0,0,0,4"/>
+              <TextBlock Text="可以请作者喝杯咖啡" FontSize="12.5"
+                         Foreground="{StaticResource Yb.Text}" Margin="0,0,0,7"/>
+              <TextBlock Text="扫码随意，金额不限，心意为主。你的支持是继续维护的动力。"
+                         FontSize="11" Foreground="{StaticResource Yb.TextFaint}"
+                         TextWrapping="Wrap" LineHeight="17"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="3" Height="1" Background="{StaticResource Yb.Line}" Margin="0,12,0,12"/>
+
+    <!-- ================= 底部按钮 ================= -->
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="取消" IsCancel="True" Style="{StaticResource GhostButton}" Margin="0,0,8,0"/>
+      <Button Content="保存" IsDefault="True" Style="{StaticResource PrimaryButton}" Click="BtnSave_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>
