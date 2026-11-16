@@ -75,7 +75,7 @@ V2.1 在此基础上加了：
 
 ### 方式一：安装器（推荐）
 
-1. 到 [**Releases**](https://github.com/CC-haihai/Y_GCGJ/releases/latest) 下载 `Y_归层工具V2.1_安装包.zip` 并解压
+1. 到 [**Releases**](https://github.com/CC-haihai/Y_GCGJ/releases/latest) 下载 `Y_GCGJ_V2.1.zip` 并解压（包内是 `Y_归层工具V2.1/` 目录）
 2. **关掉 AutoCAD**
 3. 双击 `Y_归层工具V2.1_安装器.exe`
 4. 勾上要用的 AutoCAD 版本 → 点「应用更改」→ 启动 CAD
