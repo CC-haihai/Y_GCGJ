@@ -3,8 +3,8 @@
 AutoCAD 插件，一个 DLL 三套核心能力：
 
 - **自动归层**：画图时按图层名前缀规则自动把图元落到对应图层（V1.0 核心能力）
-- **图层切换**：`CC` 图层切换面板、鼠标划过即预亮、最近图层快捷行（V2.0 新增）
-- **视口图层状态**：刷取视口的冻结层、批量生成布局视口、进视口自动切归层配置（V2.0 追加）
+- **图层切换**：`CC` 图层切换面板、鼠标划过即预亮、最近图层快捷行（V2.1 新增）
+- **视口图层状态**：刷取视口的冻结层、批量生成布局视口、进视口自动切归层配置（V2.1 追加）
 
 一个程序集、一份 `AutoLayer.ini`、两个窗口互相能跳，命令全保留。
 `AutoLayer.ini` 文件名与格式和 V1.0 完全一致，旧配置直接沿用。
@@ -76,7 +76,7 @@ dotnet build 源码/Plugin/Y_CADToolbox.csproj -c Release
 > 交付前先 `rm -rf 源码/Plugin/obj` 干净重建，避免中间缓存污染。
 >
 > 历史说明：曾有过 `-p:TestBuild=true` 的共存测试版渠道（命令名带 T、独立 ini），
-> V2.0 起已整体移除；2026-11-12 又把源码里残留的 `#if TESTBUILD` 段也删干净了，
+> V2.1 起已整体移除；2026-11-12 又把源码里残留的 `#if TESTBUILD` 段也删干净了，
 > 现在工程里没有任何条件编译分支。
 
 ### refs 从哪来
@@ -97,7 +97,7 @@ nuget install AutoCAD.NET -Version 20.1.0
 `C:\Program Files\Autodesk\AutoCAD 2021`）——**那样编出来的只能在高版本 CAD 上用**，
 只在临时验证时这么干。
 
-## V2.0 相对 V1.0 的主要改动（改代码前值得知道）
+## V2.1 相对 V1.0 的主要改动（改代码前值得知道）
 
 1. 新增图层切换面板（`UI/QuickSwitch/`），`CC` 命令放在 `Core/Commands.cs`
    （Core 不引用 acmgd），经 `UiBridge` 反射调 `PanelHost.ShowQuickSwitch()`，
@@ -225,7 +225,7 @@ list: IsVirtualizing=True  CanContentScroll=True  ScrollUnit=Pixel  实建容器
 容器数明显小于总行数 = 虚拟化生效。**别用「搜 DLL 里的 `IsVirtualizing` 字符串」
 判断** —— BAML 里的附加属性名不是明文存的，搜不到属正常。
 
-## 视口图层状态（V2.0 追加，2026-11-13 并入）
+## 视口图层状态（V2.1，2026-11-13 并入）
 
 三件事：
 
