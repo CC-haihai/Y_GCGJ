@@ -1210,7 +1210,7 @@ public partial class LayerSelectionWindow : Window
 				if (result.Moved == 0 && result.Skipped > 0)
 				{
 					// 全部失败：面板保持打开，模式条错误态写明原因（§3.8）
-					SetApplyFeedback(ApplyOutcome.Error, "没能移动：" + (result.FirstError ?? "目标图层被锁定"));
+					SetApplyFeedback(ApplyOutcome.Error, "没能移动：" + (result.FirstError ?? "未知原因"));
 					_isApplying = false;
 					return;
 				}
@@ -1253,8 +1253,9 @@ public partial class LayerSelectionWindow : Window
 		}
 		catch (Exception ex)
 		{
-			SetApplyFeedback(ApplyOutcome.Error, "没能移动：" + ex.Message);
-			try { AcadApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage("\nQLAYER 错误: " + ex.Message); } catch { }
+			string reason = LayerService.DescribeError(ex);
+			SetApplyFeedback(ApplyOutcome.Error, "没能移动：" + reason);
+			try { AcadApp.DocumentManager.MdiActiveDocument?.Editor.WriteMessage("\nQLAYER 错误: " + reason); } catch { }
 			_isApplying = false;
 		}
 	}

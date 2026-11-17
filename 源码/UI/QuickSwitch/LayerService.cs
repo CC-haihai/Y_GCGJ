@@ -51,6 +51,48 @@ public static class LayerService
 	}
 
 	/// <summary>
+	/// 把 AutoCAD 的 ErrorStatus 翻成面板上能看懂的中文。
+	///
+	/// 直接抛 <c>ex.Message</c> 只会得到 "eLockViolation" 这种枚举名 —— 用户既不知道
+	/// 是图层锁还是文档锁，也不知道下一步该干什么。面板是给画图的人用的，不是给
+	/// ObjectARX 开发者用的，错误文案必须能直接指导操作。
+	/// </summary>
+	public static string DescribeError(Exception ex)
+	{
+		if (ex == null) return "未知错误";
+
+		if (ex is Autodesk.AutoCAD.Runtime.Exception acEx)
+		{
+			switch (acEx.ErrorStatus)
+			{
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.LockViolation:
+					return "图元所在图层被锁定，请先解锁该图层";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.NotOpenForWrite:
+					return "图元不可编辑（可能被锁定或在外部参照中）";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.WasOpenForWrite:
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.WasOpenForRead:
+					return "图元正被其他操作占用，请重试";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.WasErased:
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.NullObjectId:
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.InvalidObjectId:
+					return "图元已删除或失效";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.WrongDatabase:
+					return "图元不在当前图纸中";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.NotApplicable:
+					return "该图元不支持此操作";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.InvalidInput:
+					return "参数无效";
+				case Autodesk.AutoCAD.Runtime.ErrorStatus.FileNotFound:
+					return "文件未找到";
+				default:
+					return acEx.ErrorStatus.ToString();
+			}
+		}
+
+		return ex.Message;
+	}
+
+	/// <summary>
 	/// 把一批图元移到目标层，逐个开写、失败不拖垮整批。
 	/// 一把事务全开、遇到锁定图元直接抛异常整批回滚的写法无法表达
 	/// 「2 个已移动，1 个被跳过」——CC 的部分成功反馈依赖本方法。
@@ -61,6 +103,10 @@ public static class LayerService
 		Document mdiActiveDocument = Application.DocumentManager.MdiActiveDocument;
 		if (mdiActiveDocument == null) { result.FirstError = "没有活动文档"; return result; }
 		Database database = mdiActiveDocument.Database;
+		// CC 面板是模态窗口，改层由 WPF 事件触发：此时 AutoCAD 不认为当前线程持有
+		// 文档写锁，Commit 会抛 eLockViolation —— 报出来就是「没能移动: eLockViolation」，
+		// 和图层有没有被锁无关（用户查图层会白查一遍）。所有写库路径都必须先锁文档。
+		using DocumentLock documentLock = mdiActiveDocument.LockDocument();
 		using Transaction transaction = database.TransactionManager.StartTransaction();
 		LayerTable layerTable = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
 		if (!layerTable.Has(layerName))
@@ -85,7 +131,7 @@ public static class LayerService
 			catch (Exception ex)
 			{
 				result.Skipped++;
-				if (result.FirstError == null) result.FirstError = ex.Message;
+				if (result.FirstError == null) result.FirstError = DescribeError(ex);
 			}
 		}
 		try { transaction.Commit(); }
@@ -94,7 +140,7 @@ public static class LayerService
 			// 整体提交失败：全部计为跳过，把原因带出去
 			result.Skipped += result.Moved;
 			result.Moved = 0;
-			result.FirstError = ex.Message;
+			result.FirstError = DescribeError(ex);
 		}
 		return result;
 	}
@@ -113,6 +159,10 @@ public static class LayerService
 		Document mdiActiveDocument = Application.DocumentManager.MdiActiveDocument;
 		if (mdiActiveDocument == null) return;
 		Database database = mdiActiveDocument.Database;
+		// 同 MoveObjectsToLayerEx：模态面板里切 Clayer / 写 CLAYER 也要先锁文档，
+		// 否则 CLAYER 系统变量写入同样抛 eLockViolation（被下面的 catch 吞掉后
+		// 表现为「当前层没切过去」）。
+		using DocumentLock documentLock = mdiActiveDocument.LockDocument();
 		using Transaction transaction = database.TransactionManager.StartTransaction();
 		LayerTable layerTable = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
 		if (layerTable.Has(layerName))
@@ -176,8 +226,10 @@ public static class LayerService
 
 	public static void TurnOnLayer(string layerName)
 	{
-		Database database = ActiveDb();
-		if (database == null) return;
+		Document doc = Application.DocumentManager.MdiActiveDocument;
+		if (doc == null) return;
+		Database database = doc.Database;
+		using DocumentLock documentLock = doc.LockDocument();
 		using Transaction transaction = database.TransactionManager.StartTransaction();
 		LayerTable layerTable = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
 		if (layerTable.Has(layerName))
@@ -332,8 +384,10 @@ public static class LayerService
 
 	public static void ToggleLock(string layerName)
 	{
-		Database database = ActiveDb();
-		if (database == null) return;
+		Document doc = Application.DocumentManager.MdiActiveDocument;
+		if (doc == null) return;
+		Database database = doc.Database;
+		using DocumentLock documentLock = doc.LockDocument();
 		using Transaction transaction = database.TransactionManager.StartTransaction();
 		LayerTable lt = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
 		ObjectId id = FindLayerId(lt, layerName);
@@ -347,8 +401,10 @@ public static class LayerService
 
 	public static void ToggleOnOff(string layerName)
 	{
-		Database database = ActiveDb();
-		if (database == null) return;
+		Document doc = Application.DocumentManager.MdiActiveDocument;
+		if (doc == null) return;
+		Database database = doc.Database;
+		using DocumentLock documentLock = doc.LockDocument();
 		using Transaction transaction = database.TransactionManager.StartTransaction();
 		LayerTable lt = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
 		ObjectId id = FindLayerId(lt, layerName);
@@ -362,8 +418,10 @@ public static class LayerService
 
 	public static void ToggleFreeze(string layerName)
 	{
-		Database database = ActiveDb();
-		if (database == null) return;
+		Document doc = Application.DocumentManager.MdiActiveDocument;
+		if (doc == null) return;
+		Database database = doc.Database;
+		using DocumentLock documentLock = doc.LockDocument();
 		using Transaction transaction = database.TransactionManager.StartTransaction();
 		LayerTable lt = (LayerTable)transaction.GetObject(database.LayerTableId, OpenMode.ForRead);
 		ObjectId id = FindLayerId(lt, layerName);
